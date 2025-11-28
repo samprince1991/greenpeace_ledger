@@ -10,9 +10,13 @@ const CONFIG = {
 };
 
 // Global state
-let currentMonth = '';
+let currentMonth = ''; // Format: YYYY-MM for month selector
+let currentMonthFormatted = ''; // Format: MonthName-YYYY for storage
 let currentExpenses = [];
+let currentCollections = [];
 let maintenancePerFlat = CONFIG.DEFAULT_MAINTENANCE_PER_FLAT;
+let activeTab = 'dashboard';
+let collectionType = 'maintenance'; // 'maintenance' or 'corpus'
 
 // ============================================
 // Data Storage Layer (localStorage)
@@ -20,12 +24,10 @@ let maintenancePerFlat = CONFIG.DEFAULT_MAINTENANCE_PER_FLAT;
 
 // Initialize storage with default data if empty
 function initializeStorage() {
-    // Initialize expenses if not exists
     if (!localStorage.getItem(CONFIG.STORAGE_KEYS.EXPENSES)) {
         localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify([]));
     }
     
-    // Initialize settings if not exists
     if (!localStorage.getItem(CONFIG.STORAGE_KEYS.SETTINGS)) {
         const defaultSettings = {
             MaintenancePerFlat: CONFIG.DEFAULT_MAINTENANCE_PER_FLAT.toString()
@@ -33,7 +35,6 @@ function initializeStorage() {
         localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(defaultSettings));
     }
     
-    // Initialize collections if not exists
     if (!localStorage.getItem(CONFIG.STORAGE_KEYS.COLLECTIONS)) {
         localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify([]));
     }
@@ -50,17 +51,40 @@ function getAllExpenses() {
     }
 }
 
-// Get expenses by month
+// Get all collections
+function getAllCollections() {
+    try {
+        const data = localStorage.getItem(CONFIG.STORAGE_KEYS.COLLECTIONS);
+        return data ? JSON.parse(data) : [];
+    } catch (error) {
+        console.error('Error reading collections:', error);
+        return [];
+    }
+}
+
+// Get expenses by month (supports both YYYY-MM and MonthName-YYYY)
 function getExpensesByMonth(month) {
     const allExpenses = getAllExpenses();
-    return allExpenses.filter(expense => expense.month === month);
+    return allExpenses.filter(expense => {
+        const expenseMonth = expense.month || '';
+        // Check if month matches either format
+        return expenseMonth === month || expenseMonth === convertMonthFormat(month);
+    });
+}
+
+// Get collections by month (supports both YYYY-MM and MonthName-YYYY)
+function getCollectionsByMonth(month) {
+    const allCollections = getAllCollections();
+    return allCollections.filter(collection => {
+        const collectionMonth = collection.month || '';
+        return collectionMonth === month || collectionMonth === convertMonthFormat(month);
+    });
 }
 
 // Add expense
 function addExpense(expenseData) {
     try {
         const expenses = getAllExpenses();
-        // Add unique ID and timestamp
         const newExpense = {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             ...expenseData,
@@ -75,28 +99,10 @@ function addExpense(expenseData) {
     }
 }
 
-// Get all collections
-function getAllCollections() {
-    try {
-        const data = localStorage.getItem(CONFIG.STORAGE_KEYS.COLLECTIONS);
-        return data ? JSON.parse(data) : [];
-    } catch (error) {
-        console.error('Error reading collections:', error);
-        return [];
-    }
-}
-
-// Get collections by month
-function getCollectionsByMonth(month) {
-    const allCollections = getAllCollections();
-    return allCollections.filter(collection => collection.month === month);
-}
-
 // Add collection
 function addCollection(collectionData) {
     try {
         const collections = getAllCollections();
-        // Add unique ID and timestamp
         const newCollection = {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             ...collectionData,
@@ -111,733 +117,84 @@ function addCollection(collectionData) {
     }
 }
 
-// Get total collected for a specific month (sum of maintenance collections only)
+// Delete expense
+function deleteExpense(id) {
+    try {
+        const expenses = getAllExpenses();
+        const filtered = expenses.filter(exp => exp.id !== id);
+        localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify(filtered));
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting expense:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Delete collection
+function deleteCollection(id) {
+    try {
+        const collections = getAllCollections();
+        const filtered = collections.filter(col => col.id !== id);
+        localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify(filtered));
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting collection:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Get total collected for a specific month (maintenance only)
 function getTotalCollectedForMonth(month) {
     const collections = getCollectionsByMonth(month);
     return collections
-        .filter(col => col.type === 'Maintenance')
+        .filter(col => col.type === 'Maintenance' || col.subType === 'maintenance')
         .reduce((sum, col) => sum + parseFloat(col.amount || 0), 0);
 }
 
-// Get total corpus for a specific month (sum of corpus collections only)
-function getTotalCorpusForMonth(month) {
-    const collections = getCollectionsByMonth(month);
-    return collections
-        .filter(col => col.type === 'Corpus Amount')
+// Get total corpus for all time
+function getTotalCorpusAllTime() {
+    const allCollections = getAllCollections();
+    return allCollections
+        .filter(col => col.type === 'Corpus Amount' || col.subType === 'corpus')
         .reduce((sum, col) => sum + parseFloat(col.amount || 0), 0);
 }
 
-// Get settings
-function getSettings() {
-    try {
-        const data = localStorage.getItem(CONFIG.STORAGE_KEYS.SETTINGS);
-        return data ? JSON.parse(data) : {};
-    } catch (error) {
-        console.error('Error reading settings:', error);
-        return {};
-    }
-}
-
-// Update settings
-function updateSettings(key, value) {
-    try {
-        const settings = getSettings();
-        settings[key] = value;
-        localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-        return { success: true };
-    } catch (error) {
-        console.error('Error updating settings:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// Export data to JSON file
-function exportToJSON() {
-    try {
-        const data = {
-            expenses: getAllExpenses(),
-            settings: getSettings(),
-            collections: getAllCollections(),
-            exportedAt: new Date().toISOString()
-        };
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `apartment-maintenance-backup-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        return { success: true };
-    } catch (error) {
-        console.error('Error exporting JSON:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// Import data from JSON file
-function importFromJSON(jsonData) {
-    try {
-        const data = JSON.parse(jsonData);
-        if (data.expenses) {
-            localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify(data.expenses));
-        }
-        if (data.settings) {
-            localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(data.settings));
-        }
-        if (data.collections) {
-            localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify(data.collections));
-        }
-        return { success: true };
-    } catch (error) {
-        console.error('Error importing JSON:', error);
-        return { success: false, error: error.message };
-    }
-}
-
 // ============================================
-// Application Logic
+// Helper Functions
 // ============================================
 
-// Helper function to format month as "MonthName-YYYY"
-function formatMonth(date) {
+// Convert YYYY-MM to MonthName-YYYY
+function convertMonthFormat(monthStr) {
+    if (!monthStr) return '';
+    if (monthStr.includes('-') && monthStr.length > 7) {
+        // Already in MonthName-YYYY format
+        return monthStr;
+    }
+    // Convert YYYY-MM to MonthName-YYYY
+    const [year, month] = monthStr.split('-');
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                        'July', 'August', 'September', 'October', 'November', 'December'];
-    return `${monthNames[date.getMonth()]}-${date.getFullYear()}`;
+    const monthIndex = parseInt(month) - 1;
+    return `${monthNames[monthIndex]}-${year}`;
 }
 
-// Helper function to parse month from "MonthName-YYYY" format
-function parseMonth(monthStr) {
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December'];
-    const parts = monthStr.split('-');
-    if (parts.length === 2) {
-        const monthName = parts[0];
-        const year = parseInt(parts[1]);
-        const monthIndex = monthNames.indexOf(monthName);
-        if (monthIndex !== -1 && !isNaN(year)) {
-            return new Date(year, monthIndex, 1);
-        }
-    }
-    return null;
+// Format currency
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+    }).format(amount);
 }
 
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
-});
-
-// Initialize the application
-function initializeApp() {
-    // Initialize storage
-    initializeStorage();
-    
-    // Set current month as default in "MonthName-YYYY" format
-    const now = new Date();
-    currentMonth = formatMonth(now);
-    
-    // Populate report month selector (keep as dropdown)
-    populateMonthSelectors();
-    
-    // Set default month in report selector
-    document.getElementById('reportMonthSelector').value = currentMonth;
-    
-    // Set today's date as default
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('expenseDate').value = today;
-    const collectionDateEl = document.getElementById('collectionDate');
-    if (collectionDateEl) {
-        collectionDateEl.value = today;
-    }
-    
-    // Initialize Flatpickr for month selection
-    initializeFlatpickr();
-    
-    // Load settings
-    loadSettings();
-    
-    // Load expenses and collections for current month
-    loadExpenses(currentMonth);
-    loadCollections(currentMonth);
-    
-    // Event listeners
-    setupEventListeners();
-}
-
-// Initialize Flatpickr for month selection fields
-function initializeFlatpickr() {
-    if (typeof flatpickr === 'undefined') {
-        console.warn('Flatpickr not loaded');
-        return;
-    }
-    
-    // Check if monthSelectPlugin is available
-    if (typeof monthSelectPlugin === 'undefined') {
-        console.warn('monthSelectPlugin not loaded');
-        return;
-    }
-    
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December'];
-    
-    // Format function to convert date to "MonthName-YYYY"
-    const formatMonth = (date) => {
-        if (!date) return '';
-        const d = new Date(date);
-        return `${monthNames[d.getMonth()]}-${d.getFullYear()}`;
-    };
-    
-    // Parse function to convert "MonthName-YYYY" to date
-    const parseMonth = (str) => {
-        if (!str) return null;
-        const parts = str.split('-');
-        if (parts.length === 2) {
-            const monthName = parts[0];
-            const year = parseInt(parts[1]);
-            const monthIndex = monthNames.indexOf(monthName);
-            if (monthIndex !== -1 && !isNaN(year)) {
-                return new Date(year, monthIndex, 1);
-            }
-        }
-        return null;
-    };
-    
-    // Common Flatpickr config for month selection using monthSelect plugin
-    const monthPickerConfig = {
-        plugins: [
-            new monthSelectPlugin({
-                shorthand: false, // Show full month name (January, February, etc.)
-                dateFormat: "F Y", // Format: "January 2025"
-                altFormat: "F-Y" // Alternative format: "January-2025"
-            })
-        ],
-        dateFormat: "F Y",
-        defaultDate: parseMonth(currentMonth) || new Date(),
-        onChange: function(selectedDates, dateStr, instance) {
-            // Convert to our format "MonthName-YYYY"
-            if (selectedDates.length > 0) {
-                const formatted = formatMonth(selectedDates[0]);
-                // Update the actual input value
-                this.input.value = formatted;
-            }
-        }
-    };
-    
-    // Initialize for collection month
-    const collectionMonthInput = document.getElementById('collectionMonth');
-    if (collectionMonthInput) {
-        const initialDate = parseMonth(currentMonth) || new Date();
-        const collectionPicker = flatpickr(collectionMonthInput, {
-            ...monthPickerConfig,
-            defaultDate: initialDate
-        });
-        // Set initial value in our format
-        if (currentMonth) {
-            collectionMonthInput.value = currentMonth;
-        }
-    }
-    
-    // Initialize for expense month
-    const expenseMonthInput = document.getElementById('expenseMonth');
-    if (expenseMonthInput) {
-        const initialDate = parseMonth(currentMonth) || new Date();
-        const expensePicker = flatpickr(expenseMonthInput, {
-            ...monthPickerConfig,
-            defaultDate: initialDate
-        });
-        // Set initial value in our format
-        if (currentMonth) {
-            expenseMonthInput.value = currentMonth;
-        }
-    }
-    
-    // Initialize for month selector (dashboard)
-    const monthSelectorInput = document.getElementById('monthSelector');
-    if (monthSelectorInput) {
-        const initialDate = parseMonth(currentMonth) || new Date();
-        const monthSelectorPicker = flatpickr(monthSelectorInput, {
-            ...monthPickerConfig,
-            defaultDate: initialDate,
-            onChange: function(selectedDates, dateStr, instance) {
-                // Convert to our format "MonthName-YYYY"
-                if (selectedDates.length > 0) {
-                    const formatted = formatMonth(selectedDates[0]);
-                    // Update the actual input value
-                    this.input.value = formatted;
-                    // Update current month and reload data
-                    currentMonth = formatted;
-                    loadExpenses(currentMonth);
-                    loadCollections(currentMonth);
-                }
-            }
-        });
-        // Set initial value in our format
-        if (currentMonth) {
-            monthSelectorInput.value = currentMonth;
-        }
-    }
-}
-
-// Populate report month selector with last 12 months (keep as dropdown)
-function populateMonthSelectors() {
-    const selector = document.getElementById('reportMonthSelector');
-    if (!selector) return;
-    
-    const months = [];
-    const now = new Date();
-    
-    for (let i = 0; i < 12; i++) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthStr = formatMonth(date);
-        months.push({ value: monthStr, label: monthStr });
-    }
-    
-    selector.innerHTML = months.map(m => 
-        `<option value="${m.value}">${m.label}</option>`
-    ).join('');
-}
-
-// Setup event listeners
-function setupEventListeners() {
-    // Expense form submission
-    document.getElementById('expenseForm').addEventListener('submit', handleAddExpense);
-    
-    // Collection form submission
-    const collectionForm = document.getElementById('collectionForm');
-    if (collectionForm) {
-        collectionForm.addEventListener('submit', handleAddCollection);
-    }
-    
-    // Month selector change is handled by Flatpickr's onChange in initializeFlatpickr()
-    
-    // Refresh button
-    document.getElementById('refreshBtn').addEventListener('click', function() {
-        loadExpenses(currentMonth);
-        loadCollections(currentMonth);
-    });
-    
-    // Generate report button
-    document.getElementById('generateReportBtn').addEventListener('click', function() {
-        const month = document.getElementById('reportMonthSelector').value;
-        generateReport(month);
-    });
-    
-    // Export CSV button
-    document.getElementById('exportCSVBtn').addEventListener('click', function() {
-        const month = document.getElementById('reportMonthSelector').value;
-        exportToCSV(month);
-    });
-    
-    // Export JSON button (if exists)
-    const exportJSONBtn = document.getElementById('exportJSONBtn');
-    if (exportJSONBtn) {
-        exportJSONBtn.addEventListener('click', function() {
-            const result = exportToJSON();
-            if (result.success) {
-                showNotification('Data exported to JSON successfully!');
-            } else {
-                showNotification('Error exporting JSON: ' + result.error, 'error');
-            }
-        });
-    }
-    
-    // Import JSON button (if exists)
-    const importJSONBtn = document.getElementById('importJSONBtn');
-    if (importJSONBtn) {
-        importJSONBtn.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const result = importFromJSON(event.target.result);
-                    if (result.success) {
-                        showNotification('Data imported successfully! Refreshing...');
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1000);
-                    } else {
-                        showNotification('Error importing JSON: ' + result.error, 'error');
-                    }
-                };
-                reader.readAsText(file);
-            }
-        });
-    }
-    
-    // Save settings button
-    document.getElementById('saveSettingsBtn').addEventListener('click', handleSaveSettings);
-    
-    // Update total collection when maintenance amount changes
-    document.getElementById('maintenanceAmount').addEventListener('input', function() {
-        const amount = parseFloat(this.value) || 0;
-        document.getElementById('totalCollection').textContent = (amount * CONFIG.TOTAL_FLATS).toFixed(2);
-    });
-}
-
-// Load settings
-function loadSettings() {
-    const settings = getSettings();
-    const maintenanceSetting = settings.MaintenancePerFlat;
-    if (maintenanceSetting) {
-        maintenancePerFlat = parseFloat(maintenanceSetting) || CONFIG.DEFAULT_MAINTENANCE_PER_FLAT;
-    }
-    updateSettingsUI();
-}
-
-// Update settings UI
-function updateSettingsUI() {
-    document.getElementById('maintenanceAmount').value = maintenancePerFlat;
-    document.getElementById('totalCollection').textContent = (maintenancePerFlat * CONFIG.TOTAL_FLATS).toFixed(2);
-}
-
-// Save settings
-function handleSaveSettings() {
-    const amount = parseFloat(document.getElementById('maintenanceAmount').value);
-    
-    if (isNaN(amount) || amount < 0) {
-        showNotification('Please enter a valid maintenance amount.', 'error');
-        return;
-    }
-    
-    const result = updateSettings('MaintenancePerFlat', amount.toString());
-    
-    if (result.success) {
-        maintenancePerFlat = amount;
-        updateSettingsUI();
-        showNotification('Settings saved successfully!');
-        // Update summary with new maintenance amount
-        updateMonthlySummary();
-    } else {
-        showNotification('Error saving settings: ' + (result.error || 'Unknown error'), 'error');
-    }
-}
-
-// Handle add expense form submission
-function handleAddExpense(e) {
-    e.preventDefault();
-    
-    const expenseData = {
-        month: document.getElementById('expenseMonth').value,
-        date: document.getElementById('expenseDate').value,
-        category: document.getElementById('expenseCategory').value,
-        description: document.getElementById('expenseDescription').value,
-        amount: parseFloat(document.getElementById('expenseAmount').value),
-        paidBy: document.getElementById('expensePaidBy').value,
-        paymentMode: document.getElementById('expensePaymentMode').value
-    };
-    
-    // Validation
-    if (!expenseData.month || !expenseData.date || !expenseData.category || 
-        !expenseData.description || !expenseData.amount || !expenseData.paidBy || !expenseData.paymentMode) {
-        showNotification('Please fill in all fields.', 'error');
-        return;
-    }
-    
-    if (expenseData.amount <= 0) {
-        showNotification('Amount must be greater than 0.', 'error');
-        return;
-    }
-    
-    // Show loading state
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Adding...';
-    
-    // Add expense
-    const result = addExpense(expenseData);
-    
-    if (result.success) {
-        showNotification('Expense added successfully!');
-        // Reset form
-        e.target.reset();
-        document.getElementById('expenseMonth').value = currentMonth;
-        document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
-        
-        // Reload expenses if it's the current month
-        if (expenseData.month === currentMonth) {
-            loadExpenses(currentMonth);
-        }
-    } else {
-        showNotification('Error adding expense: ' + (result.error || 'Unknown error'), 'error');
-    }
-    
-    // Reset button state
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Add Expense';
-}
-
-// Load expenses for a specific month
-function loadExpenses(month) {
-    currentMonth = month;
-    currentExpenses = getExpensesByMonth(month);
-    displayExpenses(currentExpenses);
-    updateMonthlySummary();
-}
-
-// Load collections for a specific month
-function loadCollections(month) {
-    const collections = getCollectionsByMonth(month);
-    displayCollections(collections);
-    updateMonthlySummary();
-}
-
-// Handle add collection form submission
-function handleAddCollection(e) {
-    e.preventDefault();
-    
-    const collectionData = {
-        month: document.getElementById('collectionMonth').value,
-        date: document.getElementById('collectionDate').value,
-        type: document.getElementById('collectionType').value,
-        flatNumber: document.getElementById('collectionFlatNumber').value,
-        amount: parseFloat(document.getElementById('collectionAmount').value),
-        collectedBy: document.getElementById('collectionCollectedBy').value,
-        paymentMode: document.getElementById('collectionPaymentMode').value
-    };
-    
-    // Validation
-    if (!collectionData.month || !collectionData.date || !collectionData.type || !collectionData.flatNumber || 
-        !collectionData.amount || !collectionData.collectedBy || !collectionData.paymentMode) {
-        showNotification('Please fill in all fields.', 'error');
-        return;
-    }
-    
-    const validFlats = ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B'];
-    if (!validFlats.includes(collectionData.flatNumber)) {
-        showNotification('Please select a valid flat number.', 'error');
-        return;
-    }
-    
-    if (collectionData.amount <= 0) {
-        showNotification('Amount must be greater than 0.', 'error');
-        return;
-    }
-    
-    // Show loading state
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Adding...';
-    
-    // Add collection
-    const result = addCollection(collectionData);
-    
-    if (result.success) {
-        showNotification('Collection added successfully!');
-        // Reset form
-        e.target.reset();
-        document.getElementById('collectionMonth').value = currentMonth;
-        document.getElementById('collectionDate').value = new Date().toISOString().split('T')[0];
-        
-        // Reload collections if it's the current month
-        if (collectionData.month === currentMonth) {
-            loadCollections(currentMonth);
-        }
-    } else {
-        showNotification('Error adding collection: ' + (result.error || 'Unknown error'), 'error');
-    }
-    
-    // Reset button state
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Add Collection';
-}
-
-// Display collections in separate tables
-function displayCollections(collections) {
-    // Separate maintenance and corpus collections
-    const maintenanceCollections = collections.filter(col => col.type === 'Maintenance');
-    const corpusCollections = collections.filter(col => col.type === 'Corpus Amount');
-    
-    // Display maintenance collections
-    const maintenanceTbody = document.getElementById('maintenanceCollectionTableBody');
-    if (maintenanceTbody) {
-        if (maintenanceCollections.length === 0) {
-            maintenanceTbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                        No maintenance collections found for selected month.
-                    </td>
-                </tr>
-            `;
-        } else {
-            maintenanceTbody.innerHTML = maintenanceCollections.map(collection => {
-                return `
-                <tr class="hover:bg-gray-50">
-                    <td class="border border-gray-300 px-4 py-3">${collection.month || '-'}</td>
-                    <td class="border border-gray-300 px-4 py-3">${formatDate(collection.date)}</td>
-                    <td class="border border-gray-300 px-4 py-3 font-semibold">Flat ${collection.flatNumber}</td>
-                    <td class="border border-gray-300 px-4 py-3 font-semibold">₹${parseFloat(collection.amount).toFixed(2)}</td>
-                    <td class="border border-gray-300 px-4 py-3">${collection.collectedBy}</td>
-                    <td class="border border-gray-300 px-4 py-3">${collection.paymentMode}</td>
-                </tr>
-                `;
-            }).join('');
-        }
-    }
-    
-    // Display corpus collections
-    const corpusTbody = document.getElementById('corpusCollectionTableBody');
-    if (corpusTbody) {
-        if (corpusCollections.length === 0) {
-            corpusTbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                        No corpus collections found for selected month.
-                    </td>
-                </tr>
-            `;
-        } else {
-            corpusTbody.innerHTML = corpusCollections.map(collection => {
-                return `
-                <tr class="hover:bg-gray-50">
-                    <td class="border border-gray-300 px-4 py-3">${collection.month || '-'}</td>
-                    <td class="border border-gray-300 px-4 py-3">${formatDate(collection.date)}</td>
-                    <td class="border border-gray-300 px-4 py-3 font-semibold">Flat ${collection.flatNumber}</td>
-                    <td class="border border-gray-300 px-4 py-3 font-semibold">₹${parseFloat(collection.amount).toFixed(2)}</td>
-                    <td class="border border-gray-300 px-4 py-3">${collection.collectedBy}</td>
-                    <td class="border border-gray-300 px-4 py-3">${collection.paymentMode}</td>
-                </tr>
-                `;
-            }).join('');
-        }
-    }
-}
-
-// Display expenses in table
-function displayExpenses(expenses) {
-    const tbody = document.getElementById('expenseTableBody');
-    
-    if (expenses.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                    No expenses found for selected month. Add an expense to get started.
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    tbody.innerHTML = expenses.map(expense => `
-        <tr class="hover:bg-gray-50">
-            <td class="border border-gray-300 px-4 py-3">${formatDate(expense.date)}</td>
-            <td class="border border-gray-300 px-4 py-3">${expense.category}</td>
-            <td class="border border-gray-300 px-4 py-3">${expense.description}</td>
-            <td class="border border-gray-300 px-4 py-3 font-semibold">₹${parseFloat(expense.amount).toFixed(2)}</td>
-            <td class="border border-gray-300 px-4 py-3">${expense.paidBy}</td>
-            <td class="border border-gray-300 px-4 py-3">${expense.paymentMode}</td>
-        </tr>
-    `).join('');
-}
-
-// Update monthly summary dashboard
-function updateMonthlySummary() {
-    document.getElementById('selectedMonth').textContent = currentMonth || '-';
-    
-    // Calculate totals separately
-    const totalCollected = getTotalCollectedForMonth(currentMonth); // Maintenance only
-    const totalCorpus = getTotalCorpusForMonth(currentMonth); // Corpus only (separate fund, not for expenses)
-    const totalExpenses = currentExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-    const balance = totalCollected - totalExpenses; // Balance only from maintenance, corpus is separate
-    
-    document.getElementById('totalCollected').textContent = `₹${totalCollected.toFixed(2)}`;
-    document.getElementById('totalCorpus').textContent = `₹${totalCorpus.toFixed(2)}`;
-    document.getElementById('totalExpenses').textContent = `₹${totalExpenses.toFixed(2)}`;
-    document.getElementById('remainingBalance').textContent = `₹${balance.toFixed(2)}`;
-    
-    // Color code balance
-    const balanceElement = document.getElementById('remainingBalance');
-    if (balance < 0) {
-        balanceElement.classList.add('text-red-600');
-        balanceElement.classList.remove('text-gray-800');
-    } else {
-        balanceElement.classList.remove('text-red-600');
-        balanceElement.classList.add('text-gray-800');
-    }
-}
-
-// Generate monthly report
-function generateReport(month) {
-    const expenses = getExpensesByMonth(month);
-    const totalMaintenance = getTotalCollectedForMonth(month) || 0;
-    const totalCorpus = getTotalCorpusForMonth(month) || 0;
-    const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-    const balance = totalMaintenance - totalExpenses; // Balance only from maintenance, corpus is separate
-    
-    // Update report summary
-    document.getElementById('reportTotalIncome').textContent = `₹${totalMaintenance.toFixed(2)}`;
-    document.getElementById('reportTotalExpenses').textContent = `₹${totalExpenses.toFixed(2)}`;
-    document.getElementById('reportBalanceRemaining').textContent = `₹${balance.toFixed(2)}`;
-    
-    // Display report table
-    const tbody = document.getElementById('reportTableBody');
-    if (expenses.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                    No expenses found for this month.
-                </td>
-            </tr>
-        `;
-    } else {
-        tbody.innerHTML = expenses.map(expense => `
-            <tr class="hover:bg-gray-50">
-                <td class="border border-gray-300 px-4 py-3">${formatDate(expense.date)}</td>
-                <td class="border border-gray-300 px-4 py-3">${expense.category}</td>
-                <td class="border border-gray-300 px-4 py-3">${expense.description}</td>
-                <td class="border border-gray-300 px-4 py-3 font-semibold">₹${parseFloat(expense.amount).toFixed(2)}</td>
-                <td class="border border-gray-300 px-4 py-3">${expense.paidBy}</td>
-                <td class="border border-gray-300 px-4 py-3">${expense.paymentMode}</td>
-            </tr>
-        `).join('');
-    }
-    
-    // Show report section
-    document.getElementById('reportSection').classList.remove('hidden');
-    showNotification('Report generated successfully!');
-}
-
-// Export to CSV
-function exportToCSV(month) {
-    const expenses = getExpensesByMonth(month);
-    const totalMaintenance = getTotalCollectedForMonth(month) || 0;
-    const totalCorpus = getTotalCorpusForMonth(month) || 0;
-    const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-    const balance = totalMaintenance - totalExpenses; // Balance only from maintenance, corpus is separate
-    
-    // Create CSV content
-    let csv = `Monthly Report - ${month}\n\n`;
-    csv += `Total Maintenance,₹${totalMaintenance.toFixed(2)}\n`;
-    csv += `Total Corpus (Separate Fund),₹${totalCorpus.toFixed(2)}\n`;
-    csv += `Total Expenses,₹${totalExpenses.toFixed(2)}\n`;
-    csv += `Balance Remaining (Maintenance),₹${balance.toFixed(2)}\n\n`;
-    csv += `Date,Category,Description,Amount,Paid By,Payment Mode\n`;
-    
-    expenses.forEach(expense => {
-        csv += `${expense.date},${expense.category},"${expense.description}",${expense.amount},${expense.paidBy},${expense.paymentMode}\n`;
-    });
-    
-    // Download CSV
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `apartment-maintenance-${month}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    showNotification('CSV exported successfully!');
-}
-
-// Format date for display
+// Format date for display (DD-MM-YYYY format)
 function formatDate(dateString) {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
 }
 
 // Show notification
@@ -845,7 +202,6 @@ function showNotification(message, type = 'success') {
     const notification = document.getElementById('notification');
     const content = document.getElementById('notification-content');
     
-    // Set message and color
     content.textContent = message;
     if (type === 'error') {
         content.className = 'bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg';
@@ -853,12 +209,539 @@ function showNotification(message, type = 'success') {
         content.className = 'bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg';
     }
     
-    // Show notification
     notification.classList.remove('hidden');
-    
-    // Hide after 3 seconds
     setTimeout(() => {
         notification.classList.add('hidden');
     }, 3000);
 }
 
+// ============================================
+// Tab Management
+// ============================================
+
+function switchTab(tabName) {
+    activeTab = tabName;
+    
+    // Hide all views
+    document.querySelectorAll('[id$="View"]').forEach(view => {
+        view.classList.add('view-hidden');
+    });
+    
+    // Show active view
+    const activeView = document.getElementById(`${tabName}View`);
+    if (activeView) {
+        activeView.classList.remove('view-hidden');
+    }
+    
+    // Update navigation buttons
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+        const btnTab = btn.getAttribute('data-tab');
+        if (btnTab === tabName) {
+            btn.className = 'nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-900/20';
+        } else {
+            btn.className = 'nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800';
+        }
+    });
+    
+    // Update mobile navigation buttons
+    document.querySelectorAll('.mobile-nav-tab').forEach(btn => {
+        const btnTab = btn.getAttribute('data-tab');
+        if (btnTab === tabName) {
+            btn.className = 'mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all bg-indigo-600 text-white';
+        } else {
+            btn.className = 'mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white';
+        }
+    });
+    
+    // Close mobile menu
+    closeMobileMenu();
+    
+    // Refresh data for the active tab
+    if (tabName === 'dashboard') {
+        updateDashboard();
+    } else if (tabName === 'collections') {
+        displayCollectionsTable();
+    } else if (tabName === 'expenses') {
+        displayExpensesTable();
+    }
+}
+
+// ============================================
+// Modal Management
+// ============================================
+
+function openCollectionModal() {
+    const modal = document.getElementById('collectionModal');
+    modal.classList.remove('hidden');
+    // Set default date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('collectionDate').value = today;
+    // Reset form
+    document.getElementById('collectionForm').reset();
+    document.getElementById('collectionDate').value = today;
+    collectionType = 'maintenance';
+    updateCollectionTypeButtons();
+    // Reinitialize icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+function closeCollectionModal() {
+    const modal = document.getElementById('collectionModal');
+    modal.classList.add('hidden');
+}
+
+function openExpenseModal() {
+    const modal = document.getElementById('expenseModal');
+    modal.classList.remove('hidden');
+    // Set default date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('expenseDate').value = today;
+    // Reset form
+    document.getElementById('expenseForm').reset();
+    document.getElementById('expenseDate').value = today;
+    // Reinitialize icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+function closeExpenseModal() {
+    const modal = document.getElementById('expenseModal');
+    modal.classList.add('hidden');
+}
+
+function updateCollectionTypeButtons() {
+    const maintenanceBtn = document.getElementById('collectionTypeMaintenance');
+    const corpusBtn = document.getElementById('collectionTypeCorpus');
+    
+    if (collectionType === 'maintenance') {
+        maintenanceBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-indigo-600 shadow-sm';
+        corpusBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700';
+    } else {
+        maintenanceBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700';
+        corpusBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-amber-600 shadow-sm';
+    }
+}
+
+// ============================================
+// Mobile Menu
+// ============================================
+
+function openMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    menu.classList.remove('view-hidden');
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+function closeMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    menu.classList.add('view-hidden');
+}
+
+// ============================================
+// Display Functions
+// ============================================
+
+function updateDashboard() {
+    const monthKey = currentMonth;
+    const expenses = getExpensesByMonth(monthKey);
+    const collections = getCollectionsByMonth(monthKey);
+    
+    // Calculate stats
+    const maintenanceIncome = collections
+        .filter(c => c.type === 'Maintenance' || c.subType === 'maintenance')
+        .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
+    
+    const totalExpense = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+    const balance = maintenanceIncome - totalExpense;
+    const allTimeCorpus = getTotalCorpusAllTime();
+    
+    // Update stat cards
+    document.getElementById('currentBalance').textContent = formatCurrency(balance);
+    document.getElementById('maintenanceCollected').textContent = formatCurrency(maintenanceIncome);
+    document.getElementById('totalExpenses').textContent = formatCurrency(totalExpense);
+    document.getElementById('totalCorpusFund').textContent = formatCurrency(allTimeCorpus);
+    
+    // Update recent activity
+    updateRecentActivity();
+}
+
+function updateRecentActivity() {
+    const container = document.getElementById('recentActivity');
+    const allExpenses = getAllExpenses();
+    const allCollections = getAllCollections();
+    
+    // Combine and sort by date
+    const allTransactions = [
+        ...allExpenses.map(e => ({ ...e, transactionType: 'expense' })),
+        ...allCollections.map(c => ({ ...c, transactionType: 'collection' }))
+    ].sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.date);
+        const dateB = new Date(b.createdAt || b.date);
+        return dateB - dateA;
+    }).slice(0, 5);
+    
+    if (allTransactions.length === 0) {
+        container.innerHTML = '<div class="p-8 text-center text-slate-400">No transactions recorded yet.</div>';
+        return;
+    }
+    
+    container.innerHTML = allTransactions.map(t => {
+        const isCollection = t.transactionType === 'collection';
+        const isCorpus = t.subType === 'corpus' || t.type === 'Corpus Amount';
+        const amount = parseFloat(t.amount || 0);
+        
+        return `
+            <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <div class="p-2 rounded-full ${isCollection ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}">
+                        <i data-lucide="${isCollection ? 'trending-up' : 'trending-down'}" class="w-[18px] h-[18px]"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium text-slate-900">${t.category || t.flatNumber || '-'}</p>
+                        <p class="text-xs text-slate-500">${formatDate(t.date)} • ${t.paymentMode || '-'}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold ${isCollection ? 'text-emerald-600' : 'text-slate-900'}">
+                        ${isCollection ? '+' : '-'} ${formatCurrency(amount)}
+                    </p>
+                    ${isCorpus ? '<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Corpus</span>' : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+function displayCollectionsTable() {
+    const tbody = document.getElementById('collectionsTableBody');
+    const collections = getAllCollections().sort((a, b) => {
+        const dateA = new Date(a.date || a.createdAt);
+        const dateB = new Date(b.date || b.createdAt);
+        return dateB - dateA;
+    });
+    
+    if (collections.length === 0) {
+        tbody.innerHTML = '<tr><td colSpan="6" class="px-6 py-8 text-center text-slate-400">No collections found.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = collections.map(c => {
+        const isCorpus = c.subType === 'corpus' || c.type === 'Corpus Amount';
+        const flatNumber = c.flatNumber || c.category || '-';
+        
+        return `
+            <tr class="hover:bg-slate-50/80 transition-colors group">
+                <td class="px-6 py-4 text-slate-600">${formatDate(c.date)}</td>
+                <td class="px-6 py-4 font-medium text-slate-900">${flatNumber}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium ${isCorpus ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">
+                        ${isCorpus ? 'Corpus Fund' : 'Maintenance'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-slate-600">${c.paymentMode || '-'}</td>
+                <td class="px-6 py-4 text-right font-bold text-slate-700">${formatCurrency(parseFloat(c.amount || 0))}</td>
+                <td class="px-6 py-4 text-center">
+                    <button onclick="handleDeleteCollection('${c.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+function displayExpensesTable() {
+    const tbody = document.getElementById('expensesTableBody');
+    const expenses = getAllExpenses().sort((a, b) => {
+        const dateA = new Date(a.date || a.createdAt);
+        const dateB = new Date(b.date || b.createdAt);
+        return dateB - dateA;
+    });
+    
+    if (expenses.length === 0) {
+        tbody.innerHTML = '<tr><td colSpan="6" class="px-6 py-8 text-center text-slate-400">No expenses found.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = expenses.map(e => {
+        return `
+            <tr class="hover:bg-slate-50/80 transition-colors group">
+                <td class="px-6 py-4 text-slate-600">${formatDate(e.date)}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+                        ${e.category || '-'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-slate-500 italic truncate max-w-[200px]">${e.description || '-'}</td>
+                <td class="px-6 py-4 text-slate-600">${e.paymentMode || '-'}</td>
+                <td class="px-6 py-4 text-right font-bold text-rose-600">${formatCurrency(parseFloat(e.amount || 0))}</td>
+                <td class="px-6 py-4 text-center">
+                    <button onclick="handleDeleteExpense('${e.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+// ============================================
+// Delete Handlers (global for onclick)
+// ============================================
+
+function handleDeleteExpense(id) {
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+    const result = deleteExpense(id);
+    if (result.success) {
+        showNotification('Expense deleted successfully!');
+        displayExpensesTable();
+        updateDashboard();
+    } else {
+        showNotification('Error deleting expense: ' + (result.error || 'Unknown error'), 'error');
+    }
+}
+
+function handleDeleteCollection(id) {
+    if (!confirm('Are you sure you want to delete this collection?')) return;
+    const result = deleteCollection(id);
+    if (result.success) {
+        showNotification('Collection deleted successfully!');
+        displayCollectionsTable();
+        updateDashboard();
+    } else {
+        showNotification('Error deleting collection: ' + (result.error || 'Unknown error'), 'error');
+    }
+}
+
+// ============================================
+// Form Handlers
+// ============================================
+
+function handleAddExpense(e) {
+    e.preventDefault();
+    
+    const date = document.getElementById('expenseDate').value;
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+    const category = document.getElementById('expenseCategory').value;
+    const description = document.getElementById('expenseDescription').value;
+    const paymentMode = document.querySelector('input[name="expensePaymentMode"]:checked').value;
+    
+    if (!date || !amount || !category || !paymentMode) {
+        showNotification('Please fill in all required fields.', 'error');
+        return;
+    }
+    
+    if (amount <= 0) {
+        showNotification('Amount must be greater than 0.', 'error');
+        return;
+    }
+    
+    // Get month from date (YYYY-MM format)
+    const dateObj = new Date(date);
+    const month = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+    const monthFormatted = convertMonthFormat(month);
+    
+    const expenseData = {
+        month: monthFormatted,
+        date: date,
+        category: category,
+        description: description,
+        amount: amount,
+        paymentMode: paymentMode,
+        type: 'expense'
+    };
+    
+    const result = addExpense(expenseData);
+    
+    if (result.success) {
+        showNotification('Expense added successfully!');
+        closeExpenseModal();
+        displayExpensesTable();
+        updateDashboard();
+    } else {
+        showNotification('Error adding expense: ' + (result.error || 'Unknown error'), 'error');
+    }
+}
+
+function handleAddCollection(e) {
+    e.preventDefault();
+    
+    const date = document.getElementById('collectionDate').value;
+    const amount = parseFloat(document.getElementById('collectionAmount').value);
+    const flatNumber = document.getElementById('collectionFlatNumber').value;
+    const description = document.getElementById('collectionDescription').value;
+    const paymentMode = document.querySelector('input[name="collectionPaymentMode"]:checked').value;
+    
+    if (!date || !amount || !flatNumber || !paymentMode) {
+        showNotification('Please fill in all required fields.', 'error');
+        return;
+    }
+    
+    if (amount <= 0) {
+        showNotification('Amount must be greater than 0.', 'error');
+        return;
+    }
+    
+    // Get month from date (YYYY-MM format)
+    const dateObj = new Date(date);
+    const month = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+    const monthFormatted = convertMonthFormat(month);
+    
+    const collectionData = {
+        month: monthFormatted,
+        date: date,
+        type: collectionType === 'corpus' ? 'Corpus Amount' : 'Maintenance',
+        subType: collectionType,
+        flatNumber: flatNumber,
+        category: flatNumber, // For compatibility
+        amount: amount,
+        description: description,
+        paymentMode: paymentMode,
+        collectedBy: 'Admin' // Default value
+    };
+    
+    const result = addCollection(collectionData);
+    
+    if (result.success) {
+        showNotification('Collection added successfully!');
+        closeCollectionModal();
+        displayCollectionsTable();
+        updateDashboard();
+    } else {
+        showNotification('Error adding collection: ' + (result.error || 'Unknown error'), 'error');
+    }
+}
+
+// ============================================
+// Month Navigation
+// ============================================
+
+function updateMonthSelector() {
+    const monthInput = document.getElementById('monthSelector');
+    if (monthInput) {
+        monthInput.value = currentMonth;
+    }
+}
+
+function changeMonth(direction) {
+    const [year, month] = currentMonth.split('-').map(Number);
+    const date = new Date(year, month - 1, 1);
+    
+    if (direction === 'prev') {
+        date.setMonth(date.getMonth() - 1);
+    } else {
+        date.setMonth(date.getMonth() + 1);
+    }
+    
+    currentMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    currentMonthFormatted = convertMonthFormat(currentMonth);
+    updateMonthSelector();
+    updateDashboard();
+}
+
+// ============================================
+// Initialization
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeStorage();
+    
+    // Set current month
+    const now = new Date();
+    currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    currentMonthFormatted = convertMonthFormat(currentMonth);
+    
+    // Set default dates in modals
+    const today = new Date().toISOString().split('T')[0];
+    const collectionDateEl = document.getElementById('collectionDate');
+    const expenseDateEl = document.getElementById('expenseDate');
+    if (collectionDateEl) collectionDateEl.value = today;
+    if (expenseDateEl) expenseDateEl.value = today;
+    
+    // Initialize month selector
+    updateMonthSelector();
+    
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Initialize dashboard
+    updateDashboard();
+    displayCollectionsTable();
+    displayExpensesTable();
+    
+    // Initialize icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+});
+
+function setupEventListeners() {
+    // Tab switching
+    document.querySelectorAll('.nav-tab, .mobile-nav-tab').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tab = this.getAttribute('data-tab');
+            if (tab) switchTab(tab);
+        });
+    });
+    
+    // Modal buttons
+    document.getElementById('addCollectionBtn')?.addEventListener('click', openCollectionModal);
+    document.getElementById('addCollectionBtn2')?.addEventListener('click', openCollectionModal);
+    document.getElementById('mobileAddCollectionBtn')?.addEventListener('click', openCollectionModal);
+    document.getElementById('closeCollectionModal')?.addEventListener('click', closeCollectionModal);
+    
+    document.getElementById('addExpenseBtn')?.addEventListener('click', openExpenseModal);
+    document.getElementById('addExpenseBtn2')?.addEventListener('click', openExpenseModal);
+    document.getElementById('mobileAddExpenseBtn')?.addEventListener('click', openExpenseModal);
+    document.getElementById('closeExpenseModal')?.addEventListener('click', closeExpenseModal);
+    
+    // Collection type buttons
+    document.getElementById('collectionTypeMaintenance')?.addEventListener('click', function() {
+        collectionType = 'maintenance';
+        updateCollectionTypeButtons();
+    });
+    document.getElementById('collectionTypeCorpus')?.addEventListener('click', function() {
+        collectionType = 'corpus';
+        updateCollectionTypeButtons();
+    });
+    
+    // Forms
+    document.getElementById('collectionForm')?.addEventListener('submit', handleAddCollection);
+    document.getElementById('expenseForm')?.addEventListener('submit', handleAddExpense);
+    
+    // Month navigation
+    document.getElementById('prevMonth')?.addEventListener('click', () => changeMonth('prev'));
+    document.getElementById('nextMonth')?.addEventListener('click', () => changeMonth('next'));
+    document.getElementById('monthSelector')?.addEventListener('change', function() {
+        currentMonth = this.value;
+        currentMonthFormatted = convertMonthFormat(currentMonth);
+        updateDashboard();
+    });
+    
+    // Mobile menu
+    document.getElementById('mobileMenuBtn')?.addEventListener('click', openMobileMenu);
+    document.getElementById('closeMobileMenu')?.addEventListener('click', closeMobileMenu);
+    document.getElementById('mobileMenuBackdrop')?.addEventListener('click', closeMobileMenu);
+    
+    // Reports download button
+    document.getElementById('downloadSampleBtn')?.addEventListener('click', function() {
+        showNotification('Report generation feature coming soon!');
+    });
+}

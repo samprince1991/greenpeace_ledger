@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apartment Maintenance Tracker</title>
+    <title>Apt. Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Flatpickr CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <!-- Flatpickr MonthSelect Plugin CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* Custom styles for better UX */
         .notification {
             transition: opacity 0.3s ease-in-out;
         }
@@ -18,399 +15,457 @@
             opacity: 0.6;
             pointer-events: none;
         }
+        .view-hidden {
+            display: none;
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-blue-600 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-6">
-            <h1 class="text-3xl font-bold">Apartment Maintenance Tracker</h1>
-            <p class="text-blue-100 mt-1">Manage expenses for 8 apartments</p>
+<body class="bg-slate-50 min-h-screen font-sans">
+    <!-- Fixed Top Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 h-16 bg-slate-900 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <span class="font-bold text-lg">A</span>
+                </div>
+                <span class="font-bold text-lg tracking-tight hidden sm:block">Apt. Tracker</span>
+                <span class="font-bold text-lg tracking-tight sm:hidden">Tracker</span>
+            </div>
+
+            <!-- Desktop Navigation Links -->
+            <div class="hidden md:flex items-center gap-1">
+                <button data-tab="dashboard" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-900/20">
+                    <i data-lucide="layout-dashboard" class="w-[18px] h-[18px]"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button data-tab="collections" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i data-lucide="wallet" class="w-[18px] h-[18px]"></i>
+                    <span>Collections</span>
+                </button>
+                <button data-tab="expenses" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i data-lucide="receipt" class="w-[18px] h-[18px]"></i>
+                    <span>Expenses</span>
+                </button>
+                <button data-tab="reports" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
+                    <span>Reports</span>
+                </button>
+            </div>
+
+            <!-- Right Side: Profile & Mobile Toggle -->
+            <div class="flex items-center gap-4">
+                <!-- User Profile (Desktop) -->
+                <div class="hidden md:flex items-center gap-3 pl-4 border-l border-slate-700">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-medium text-white">Admin</p>
+                        <p class="text-xs text-slate-500">Secretary</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-600">
+                        AD
+                    </div>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuBtn" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
         </div>
-    </header>
+    </nav>
+
+    <!-- Mobile Menu Overlay & Drawer -->
+    <div id="mobileMenu" class="fixed inset-0 z-50 md:hidden view-hidden">
+        <!-- Backdrop -->
+        <div id="mobileMenuBackdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+        
+        <!-- Drawer -->
+        <div class="absolute right-0 top-0 bottom-0 w-64 bg-slate-900 shadow-2xl p-6 transform transition-transform duration-200 flex flex-col">
+            <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+                <span class="font-bold text-xl text-white">Menu</span>
+                <button id="closeMobileMenu" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="space-y-2 flex-1">
+                <button data-tab="dashboard" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all bg-indigo-600 text-white">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button data-tab="collections" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="wallet" class="w-5 h-5"></i>
+                    <span>Collections</span>
+                </button>
+                <button data-tab="expenses" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="receipt" class="w-5 h-5"></i>
+                    <span>Expenses</span>
+                </button>
+                <button data-tab="reports" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    <span>Reports</span>
+                </button>
+            </div>
+            
+            <!-- User Profile (Mobile Footer) -->
+            <div class="pt-4 border-t border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+                        AD
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-white">Admin</p>
+                        <p class="text-xs text-slate-500">Secretary</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Notification Area -->
-    <div id="notification" class="notification fixed top-4 right-4 z-50 hidden">
+    <div id="notification" class="notification fixed top-20 right-4 z-50 hidden">
         <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg" id="notification-content">
             Success!
         </div>
     </div>
 
-    <div class="container mx-auto px-4 py-8">
-        <!-- Monthly Summary Dashboard -->
-        <section class="mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Monthly Summary</h2>
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <input type="text" id="monthSelector" placeholder="Select Month" 
-                               class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <button id="refreshBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                            Refresh
-                        </button>
+    <!-- Main Content -->
+    <main class="flex-1 w-full max-w-7xl mx-auto pt-24 px-4 pb-4 md:px-8 md:pb-8">
+        <!-- Dashboard View -->
+        <div id="dashboardView" class="space-y-6">
+            <!-- Date Filter & Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Dashboard</h2>
+                    <p class="text-slate-500">Overview for your apartment complex</p>
+                </div>
+                <div class="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                    <button id="prevMonth" class="p-1 hover:bg-slate-100 rounded">←</button>
+                    <input type="month" id="monthSelector" value="" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent">
+                    <button id="nextMonth" class="p-1 hover:bg-slate-100 rounded">→</button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Current Balance</p>
+                        <h3 class="text-2xl font-bold text-slate-900" id="currentBalance">₹0</h3>
+                        <p class="text-xs text-slate-400 mt-1">Income - Expenses (This Month)</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-indigo-50">
+                        <i data-lucide="wallet" class="w-6 h-6 text-indigo-600"></i>
                     </div>
                 </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                        <p class="text-sm text-gray-600">Selected Month</p>
-                        <p class="text-2xl font-bold text-gray-800" id="selectedMonth">-</p>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Maintenance Collected</p>
+                        <h3 class="text-2xl font-bold text-slate-900" id="maintenanceCollected">₹0</h3>
+                        <p class="text-xs text-slate-400 mt-1">From residents this month</p>
                     </div>
-                    <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
-                        <p class="text-sm text-gray-600">Total Collected</p>
-                        <p class="text-2xl font-bold text-gray-800" id="totalCollected">₹0</p>
-                        <p class="text-xs text-gray-500 mt-1">Maintenance only</p>
+                    <div class="p-3 rounded-xl bg-emerald-50">
+                        <i data-lucide="trending-up" class="w-6 h-6 text-emerald-600"></i>
                     </div>
-                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
-                        <p class="text-sm text-gray-600">Total Corpus</p>
-                        <p class="text-2xl font-bold text-gray-800" id="totalCorpus">₹0</p>
-                        <p class="text-xs text-gray-500 mt-1">Separate fund (not for expenses)</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Total Expenses</p>
+                        <h3 class="text-2xl font-bold text-slate-900" id="totalExpenses">₹0</h3>
+                        <p class="text-xs text-slate-400 mt-1">Utilities & Services</p>
                     </div>
-                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                        <p class="text-sm text-gray-600">Total Expenses</p>
-                        <p class="text-2xl font-bold text-gray-800" id="totalExpenses">₹0</p>
+                    <div class="p-3 rounded-xl bg-rose-50">
+                        <i data-lucide="trending-down" class="w-6 h-6 text-rose-600"></i>
                     </div>
-                    <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded">
-                        <p class="text-sm text-gray-600">Remaining Balance</p>
-                        <p class="text-2xl font-bold text-gray-800" id="remainingBalance">₹0</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Total Corpus Fund</p>
+                        <h3 class="text-2xl font-bold text-slate-900" id="totalCorpusFund">₹0</h3>
+                        <p class="text-xs text-slate-400 mt-1">Lifetime accumulation</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-amber-50">
+                        <i data-lucide="piggy-bank" class="w-6 h-6 text-amber-600"></i>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- Add Collection Form -->
-        <section class="mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Add Collection (Per Flat)</h2>
-                <form id="collectionForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Month (e.g., June-2025)</label>
-                        <input type="text" id="collectionMonth" placeholder="June-2025" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                               required>
+            <!-- Action Bar -->
+            <div class="grid grid-cols-2 gap-4">
+                <button id="addCollectionBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-white border border-emerald-100 text-emerald-700 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group">
+                    <div class="bg-emerald-100 p-2 rounded-full group-hover:bg-emerald-200 transition-colors">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input type="date" id="collectionDate" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                               required>
+                    <span class="font-semibold">Add Collection</span>
+                </button>
+                <button id="addExpenseBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-white border border-rose-100 text-rose-700 shadow-sm hover:shadow-md hover:border-rose-200 transition-all group">
+                    <div class="bg-rose-100 p-2 rounded-full group-hover:bg-rose-200 transition-colors">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                        <select id="collectionType" 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                                required>
-                            <option value="">Select Type</option>
-                            <option value="Maintenance">Maintenance</option>
-                            <option value="Corpus Amount">Corpus Amount</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Flat Number</label>
-                        <select id="collectionFlatNumber" 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                                required>
-                            <option value="">Select Flat</option>
-                            <option value="1A">Flat 1A</option>
-                            <option value="1B">Flat 1B</option>
-                            <option value="2A">Flat 2A</option>
-                            <option value="2B">Flat 2B</option>
-                            <option value="3A">Flat 3A</option>
-                            <option value="3B">Flat 3B</option>
-                            <option value="4A">Flat 4A</option>
-                            <option value="4B">Flat 4B</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount (₹)</label>
-                        <input type="number" id="collectionAmount" placeholder="0.00" step="0.01" min="0" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                               required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Collected By</label>
-                        <input type="text" id="collectionCollectedBy" placeholder="Name" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                               required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Payment Mode</label>
-                        <select id="collectionPaymentMode" 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                                required>
-                            <option value="">Select Payment Mode</option>
-                            <option value="Cash">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="Bank">Bank</option>
-                        </select>
-                    </div>
-                    <div class="md:col-span-3">
-                        <button type="submit" 
-                                class="w-full md:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
-                            Add Collection
-                        </button>
-                    </div>
-                </form>
+                    <span class="font-semibold">Add Expense</span>
+                </button>
             </div>
-        </section>
 
-        <!-- Maintenance Collection List -->
-        <section class="mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Maintenance Collections</h2>
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-semibold text-slate-800">Recent Activity</h3>
+                    <button data-tab="collections" class="text-sm text-indigo-600 font-medium hover:text-indigo-700">View All</button>
+                </div>
+                <div class="divide-y divide-slate-100" id="recentActivity">
+                    <div class="p-8 text-center text-slate-400">
+                        No transactions recorded yet.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collections View -->
+        <div id="collectionsView" class="space-y-6 view-hidden">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Collections</h2>
+                    <p class="text-slate-500">History of all maintenance & corpus payments</p>
+                </div>
+                <button id="addCollectionBtn2" class="hidden sm:flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+                    <i data-lucide="plus" class="w-[18px] h-[18px]"></i>
+                    <span>Add New</span>
+                </button>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse">
-                        <thead>
-                            <tr class="bg-green-100">
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Flat Number</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Collected By</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Mode</th>
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-semibold">
+                            <tr>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4">Flat No.</th>
+                                <th class="px-6 py-4">Type</th>
+                                <th class="px-6 py-4">Payment</th>
+                                <th class="px-6 py-4 text-right">Amount</th>
+                                <th class="px-6 py-4 text-center">Action</th>
                             </tr>
                         </thead>
-                        <tbody id="maintenanceCollectionTableBody">
+                        <tbody class="divide-y divide-slate-100 text-sm" id="collectionsTableBody">
                             <tr>
-                                <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                                    No maintenance collections found for selected month.
-                                </td>
+                                <td colSpan="6" class="px-6 py-8 text-center text-slate-400">No collections found.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Corpus Collection List -->
-        <section class="mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Corpus Collections</h2>
+        <!-- Expenses View -->
+        <div id="expensesView" class="space-y-6 view-hidden">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Expenses</h2>
+                    <p class="text-slate-500">Track spending on utilities and repairs</p>
+                </div>
+                <button id="addExpenseBtn2" class="hidden sm:flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200">
+                    <i data-lucide="plus" class="w-[18px] h-[18px]"></i>
+                    <span>Add New</span>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse">
-                        <thead>
-                            <tr class="bg-yellow-100">
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Flat Number</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Collected By</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Mode</th>
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-semibold">
+                            <tr>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4">Category</th>
+                                <th class="px-6 py-4">Description</th>
+                                <th class="px-6 py-4">Payment</th>
+                                <th class="px-6 py-4 text-right">Amount</th>
+                                <th class="px-6 py-4 text-center">Action</th>
                             </tr>
                         </thead>
-                        <tbody id="corpusCollectionTableBody">
+                        <tbody class="divide-y divide-slate-100 text-sm" id="expensesTableBody">
                             <tr>
-                                <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                                    No corpus collections found for selected month.
-                                </td>
+                                <td colSpan="6" class="px-6 py-8 text-center text-slate-400">No expenses found.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Add Expense Form -->
-        <section class="mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Add New Expense</h2>
-                <form id="expenseForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Month (e.g., June-2025)</label>
-                        <input type="text" id="expenseMonth" placeholder="June-2025" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input type="date" id="expenseDate" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                        <select id="expenseCategory" 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required>
-                            <option value="">Select Category</option>
-                            <option value="Electricity">Electricity</option>
-                            <option value="Water">Water</option>
-                            <option value="Security">Security</option>
-                            <option value="Cleaning">Cleaning</option>
-                            <option value="Repair">Repair</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                        <input type="text" id="expenseDescription" placeholder="Enter expense description" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount (₹)</label>
-                        <input type="number" id="expenseAmount" placeholder="0.00" step="0.01" min="0" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Paid By</label>
-                        <input type="text" id="expensePaidBy" placeholder="Name" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Payment Mode</label>
-                        <select id="expensePaymentMode" 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required>
-                            <option value="">Select Payment Mode</option>
-                            <option value="Cash">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="Bank">Bank</option>
-                        </select>
-                    </div>
-                    <div class="md:col-span-3">
-                        <button type="submit" 
-                                class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
-                            Add Expense
-                        </button>
-                    </div>
-                </form>
+        <!-- Reports View -->
+        <div id="reportsView" class="flex flex-col items-center justify-center h-96 text-center space-y-4 view-hidden">
+            <div class="bg-indigo-50 p-4 rounded-full text-indigo-500">
+                <i data-lucide="file-text" class="w-12 h-12"></i>
             </div>
-        </section>
+            <h3 class="text-xl font-bold text-slate-900">Reports Module</h3>
+            <p class="text-slate-500 max-w-md">Detailed PDF and CSV reports for auditors will be generated here.</p>
+            <button id="downloadSampleBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Download Month Sample</button>
+        </div>
+    </main>
 
-        <!-- Expense List -->
-        <section class="mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Expense List</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Paid By</th>
-                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Mode</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expenseTableBody">
-                            <tr>
-                                <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                                    No expenses found for selected month. Add an expense to get started.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+    <!-- Add Collection Modal -->
+    <div id="collectionModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="text-lg font-semibold text-slate-800">Add New Collection</h3>
+                <button id="closeCollectionModal" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <form id="collectionForm" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Date</label>
+                        <input type="date" id="collectionDate" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Amount (₹)</label>
+                        <input type="number" id="collectionAmount" required min="0" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                    </div>
                 </div>
-            </div>
-        </section>
 
-        <!-- Reports Section -->
-        <section class="mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Monthly Reports</h2>
-                <div class="mb-6">
-                    <div class="flex flex-col sm:flex-row gap-4 items-end">
-                        <div class="flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Month for Report</label>
-                            <select id="reportMonthSelector" 
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <!-- Options will be populated by JavaScript -->
-                            </select>
-                        </div>
-                        <button id="generateReportBtn" 
-                                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
-                            Generate Monthly Report
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Collection Type</label>
+                    <div class="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                        <button type="button" id="collectionTypeMaintenance" class="flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-indigo-600 shadow-sm">
+                            Maintenance
                         </button>
-                        <button id="exportCSVBtn" 
-                                class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium">
-                            Export to CSV
+                        <button type="button" id="collectionTypeCorpus" class="flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700">
+                            Corpus Fund
                         </button>
                     </div>
                 </div>
-                
-                <div id="reportSection" class="hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
-                            <p class="text-sm text-gray-600">Total Income</p>
-                            <p class="text-2xl font-bold text-gray-800" id="reportTotalIncome">₹0</p>
-                        </div>
-                        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                            <p class="text-sm text-gray-600">Total Expenses</p>
-                            <p class="text-2xl font-bold text-gray-800" id="reportTotalExpenses">₹0</p>
-                        </div>
-                        <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded">
-                            <p class="text-sm text-gray-600">Balance Remaining</p>
-                            <p class="text-2xl font-bold text-gray-800" id="reportBalanceRemaining">₹0</p>
-                        </div>
-                    </div>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse">
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
-                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
-                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
-                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Paid By</th>
-                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Mode</th>
-                                </tr>
-                            </thead>
-                            <tbody id="reportTableBody">
-                                <!-- Report data will be populated here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- Settings Section -->
-        <section class="mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Settings</h2>
-                <div class="space-y-6">
-                    <div class="max-w-md">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Monthly Maintenance per Flat (₹)</label>
-                        <div class="flex gap-4">
-                            <input type="number" id="maintenanceAmount" placeholder="2000" min="0" step="0.01" 
-                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <button id="saveSettingsBtn" 
-                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
-                                Save
-                            </button>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2">Total monthly collection: ₹<span id="totalCollection">0</span> (8 flats × maintenance amount)</p>
-                    </div>
-                    
-                    <div class="border-t pt-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Data Management</h3>
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <button id="exportJSONBtn" 
-                                    class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
-                                Export Data (JSON)
-                            </button>
-                            <label class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium cursor-pointer text-center">
-                                Import Data (JSON)
-                                <input type="file" id="importJSONBtn" accept=".json" class="hidden">
-                            </label>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2">Backup your data or restore from a previous backup</p>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Flat Number / Unit</label>
+                    <select id="collectionFlatNumber" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white">
+                        <option value="Flat 101">Flat 101</option>
+                        <option value="Flat 102">Flat 102</option>
+                        <option value="Flat 103">Flat 103</option>
+                        <option value="Flat 104">Flat 104</option>
+                        <option value="Flat 201">Flat 201</option>
+                        <option value="Flat 202">Flat 202</option>
+                        <option value="Flat 203">Flat 203</option>
+                        <option value="Flat 204">Flat 204</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Description (Optional)</label>
+                    <input type="text" id="collectionDescription" placeholder="e.g. November Maintenance" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Payment Mode</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="collectionPaymentMode" value="Online" checked class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Online</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="collectionPaymentMode" value="Cash" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Cash</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="collectionPaymentMode" value="Cheque" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Cheque</span>
+                        </label>
                     </div>
                 </div>
-            </div>
-        </section>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/25">
+                        Record Collection
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <!-- Flatpickr JS -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <!-- Flatpickr MonthSelect Plugin JS -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+    <!-- Add Expense Modal -->
+    <div id="expenseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="text-lg font-semibold text-slate-800">Add New Expense</h3>
+                <button id="closeExpenseModal" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <form id="expenseForm" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Date</label>
+                        <input type="date" id="expenseDate" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Amount (₹)</label>
+                        <input type="number" id="expenseAmount" required min="0" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Category</label>
+                    <select id="expenseCategory" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white">
+                        <option>Electricity</option>
+                        <option>Water Tanker</option>
+                        <option>Cleaning</option>
+                        <option>Security</option>
+                        <option>Repairs</option>
+                        <option>Gardening</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Description (Optional)</label>
+                    <input type="text" id="expenseDescription" placeholder="e.g. November Maintenance" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Payment Mode</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="expensePaymentMode" value="Online" checked class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Online</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="expensePaymentMode" value="Cash" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Cash</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="expensePaymentMode" value="Cheque" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Cheque</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all bg-gradient-to-r from-rose-500 to-pink-500 shadow-rose-500/25">
+                        Record Expense
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Floating Action Button (Mobile Only) -->
+    <div class="md:hidden fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        <button id="mobileAddExpenseBtn" class="w-12 h-12 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 active:scale-95 transition-all">
+            <i data-lucide="receipt" class="w-5 h-5"></i>
+        </button>
+        <button id="mobileAddCollectionBtn" class="w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 active:scale-95 transition-all">
+            <i data-lucide="plus" class="w-7 h-7"></i>
+        </button>
+    </div>
+
     <script src="script.js"></script>
+    <script>
+        // Initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    </script>
 </body>
 </html>
-
