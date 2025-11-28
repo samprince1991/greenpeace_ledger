@@ -482,38 +482,29 @@ function updateHousesSummary() {
         };
     });
     
-    // Generate HTML for each flat
+    // Generate HTML for table rows
+    if (flats.length === 0) {
+        container.innerHTML = '<tr><td colSpan="4" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+        return;
+    }
+    
     container.innerHTML = flats.map(flat => {
         const data = flatData[flat];
         const hasCollection = data.total > 0;
         
         return `
-            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between mb-3">
-                    <h4 class="font-semibold text-slate-900 text-sm">${flat}</h4>
-                    ${hasCollection ? '<div class="w-2 h-2 bg-emerald-500 rounded-full"></div>' : '<div class="w-2 h-2 bg-slate-300 rounded-full"></div>'}
-                </div>
-                <div class="space-y-2">
-                    <div>
-                        <p class="text-xs text-slate-500 mb-0.5">Maintenance</p>
-                        <p class="text-base font-bold ${data.maintenance > 0 ? 'text-emerald-600' : 'text-slate-400'}">
-                            ${formatCurrency(data.maintenance)}
-                        </p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-500 mb-0.5">Corpus</p>
-                        <p class="text-base font-bold ${data.corpus > 0 ? 'text-amber-600' : 'text-slate-400'}">
-                            ${formatCurrency(data.corpus)}
-                        </p>
-                    </div>
-                    <div class="pt-2 border-t border-slate-200">
-                        <p class="text-xs text-slate-500 mb-0.5">Total</p>
-                        <p class="text-lg font-bold ${hasCollection ? 'text-slate-900' : 'text-slate-400'}">
-                            ${formatCurrency(data.total)}
-                        </p>
-                    </div>
-                </div>
-            </div>
+            <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
+                <td class="px-6 py-4 text-right font-semibold ${data.maintenance > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                    ${formatCurrency(data.maintenance)}
+                </td>
+                <td class="px-6 py-4 text-right font-semibold ${data.corpus > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                    ${formatCurrency(data.corpus)}
+                </td>
+                <td class="px-6 py-4 text-right font-bold ${hasCollection ? 'text-slate-900' : 'text-slate-400'}">
+                    ${formatCurrency(data.total)}
+                </td>
+            </tr>
         `;
     }).join('');
 }

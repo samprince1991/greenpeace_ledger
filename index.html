@@ -216,10 +216,20 @@
                     <h3 class="font-semibold text-slate-800">Collection Summary by House</h3>
                     <p class="text-xs text-slate-500 mt-1">Total amount received from each flat this month</p>
                 </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="housesSummary">
-                        <!-- Houses will be dynamically populated here -->
-                    </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-semibold">
+                            <tr>
+                                <th class="px-6 py-4">Flat No.</th>
+                                <th class="px-6 py-4 text-right">Maintenance</th>
+                                <th class="px-6 py-4 text-right">Corpus</th>
+                                <th class="px-6 py-4 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm" id="housesSummary">
+                            <!-- Houses will be dynamically populated here -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
