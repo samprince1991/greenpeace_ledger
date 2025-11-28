@@ -10,8 +10,10 @@ const CONFIG = {
 };
 
 // Global state
-let currentMonth = ''; // Format: YYYY-MM for month selector
+let currentMonth = ''; // Format: YYYY-MM for month selector (Dashboard)
 let currentMonthFormatted = ''; // Format: MonthName-YYYY for storage
+let collectionsMonth = ''; // Format: YYYY-MM for Collections tab
+let expensesMonth = ''; // Format: YYYY-MM for Expenses tab
 let currentExpenses = [];
 let currentCollections = [];
 let maintenancePerFlat = CONFIG.DEFAULT_MAINTENANCE_PER_FLAT;
@@ -276,12 +278,28 @@ function switchTab(tabName) {
     // Close mobile menu
     closeMobileMenu();
     
+    // Initialize month selectors if not already set
+    const now = new Date();
+    const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
     // Refresh data for the active tab
     if (tabName === 'dashboard') {
         updateDashboard();
     } else if (tabName === 'collections') {
+        if (!collectionsMonth) {
+            collectionsMonth = defaultMonth;
+            if (collectionsMonthPicker) {
+                collectionsMonthPicker.setDate(now, true);
+            }
+        }
         displayCollectionsTable();
     } else if (tabName === 'expenses') {
+        if (!expensesMonth) {
+            expensesMonth = defaultMonth;
+            if (expensesMonthPicker) {
+                expensesMonthPicker.setDate(now, true);
+            }
+        }
         displayExpensesTable();
     }
 }
@@ -478,7 +496,14 @@ function updateRecentActivity() {
 
 function displayCollectionsTable() {
     const tbody = document.getElementById('collectionsTableBody');
-    const collections = getAllCollections().sort((a, b) => {
+    let collections = getAllCollections();
+    
+    // Filter by month if a month is selected (empty string means show all)
+    if (collectionsMonth && collectionsMonth !== '') {
+        collections = getCollectionsByMonth(collectionsMonth);
+    }
+    
+    collections = collections.sort((a, b) => {
         const dateA = new Date(a.date || a.createdAt);
         const dateB = new Date(b.date || b.createdAt);
         return dateB - dateA;
@@ -520,7 +545,14 @@ function displayCollectionsTable() {
 
 function displayExpensesTable() {
     const tbody = document.getElementById('expensesTableBody');
-    const expenses = getAllExpenses().sort((a, b) => {
+    let expenses = getAllExpenses();
+    
+    // Filter by month if a month is selected (empty string means show all)
+    if (expensesMonth && expensesMonth !== '') {
+        expenses = getExpensesByMonth(expensesMonth);
+    }
+    
+    expenses = expenses.sort((a, b) => {
         const dateA = new Date(a.date || a.createdAt);
         const dateB = new Date(b.date || b.createdAt);
         return dateB - dateA;
@@ -754,11 +786,77 @@ function changeMonth(direction) {
     }
 }
 
+function changeCollectionsMonth(direction) {
+    if (collectionsMonthPicker) {
+        const currentDate = collectionsMonthPicker.selectedDates[0] || new Date();
+        const newDate = new Date(currentDate);
+        
+        if (direction === 'prev') {
+            newDate.setMonth(newDate.getMonth() - 1);
+        } else {
+            newDate.setMonth(newDate.getMonth() + 1);
+        }
+        
+        collectionsMonthPicker.setDate(newDate, true);
+    } else {
+        // Fallback if Flatpickr not initialized
+        const now = new Date();
+        if (!collectionsMonth) {
+            collectionsMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+        const [year, month] = collectionsMonth.split('-').map(Number);
+        const date = new Date(year, month - 1, 1);
+        
+        if (direction === 'prev') {
+            date.setMonth(date.getMonth() - 1);
+        } else {
+            date.setMonth(date.getMonth() + 1);
+        }
+        
+        collectionsMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        displayCollectionsTable();
+    }
+}
+
+function changeExpensesMonth(direction) {
+    if (expensesMonthPicker) {
+        const currentDate = expensesMonthPicker.selectedDates[0] || new Date();
+        const newDate = new Date(currentDate);
+        
+        if (direction === 'prev') {
+            newDate.setMonth(newDate.getMonth() - 1);
+        } else {
+            newDate.setMonth(newDate.getMonth() + 1);
+        }
+        
+        expensesMonthPicker.setDate(newDate, true);
+    } else {
+        // Fallback if Flatpickr not initialized
+        const now = new Date();
+        if (!expensesMonth) {
+            expensesMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+        const [year, month] = expensesMonth.split('-').map(Number);
+        const date = new Date(year, month - 1, 1);
+        
+        if (direction === 'prev') {
+            date.setMonth(date.getMonth() - 1);
+        } else {
+            date.setMonth(date.getMonth() + 1);
+        }
+        
+        expensesMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        displayExpensesTable();
+    }
+}
+
 // ============================================
 // Flatpickr Initialization
 // ============================================
 
 let monthSelectorPicker = null;
+let collectionsMonthPicker = null;
+let expensesMonthPicker = null;
 let collectionDatePicker = null;
 let expenseDatePicker = null;
 
@@ -820,6 +918,54 @@ function initializeFlatpickr() {
             clickOpens: true,
             animate: true
         });
+    }
+    
+    // Initialize Collections month selector
+    const collectionsMonthInput = document.getElementById('monthSelectorCollections');
+    if (collectionsMonthInput && typeof monthSelectPlugin !== 'undefined') {
+        const now = new Date();
+        collectionsMonthPicker = flatpickr(collectionsMonthInput, {
+            plugins: [new monthSelectPlugin({
+                shorthand: false,
+                dateFormat: "F Y",
+                altFormat: "F Y"
+            })],
+            dateFormat: "Y-m",
+            defaultDate: now,
+            onChange: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length > 0) {
+                    const date = selectedDates[0];
+                    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    collectionsMonth = month;
+                    displayCollectionsTable();
+                }
+            }
+        });
+        collectionsMonthInput.value = collectionsMonthPicker.input.value;
+    }
+    
+    // Initialize Expenses month selector
+    const expensesMonthInput = document.getElementById('monthSelectorExpenses');
+    if (expensesMonthInput && typeof monthSelectPlugin !== 'undefined') {
+        const now = new Date();
+        expensesMonthPicker = flatpickr(expensesMonthInput, {
+            plugins: [new monthSelectPlugin({
+                shorthand: false,
+                dateFormat: "F Y",
+                altFormat: "F Y"
+            })],
+            dateFormat: "Y-m",
+            defaultDate: now,
+            onChange: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length > 0) {
+                    const date = selectedDates[0];
+                    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    expensesMonth = month;
+                    displayExpensesTable();
+                }
+            }
+        });
+        expensesMonthInput.value = expensesMonthPicker.input.value;
     }
 }
 
@@ -889,10 +1035,18 @@ function setupEventListeners() {
     document.getElementById('collectionForm')?.addEventListener('submit', handleAddCollection);
     document.getElementById('expenseForm')?.addEventListener('submit', handleAddExpense);
     
-    // Month navigation
+    // Month navigation (Dashboard)
     document.getElementById('prevMonth')?.addEventListener('click', () => changeMonth('prev'));
     document.getElementById('nextMonth')?.addEventListener('click', () => changeMonth('next'));
     // Month selector change is handled by Flatpickr's onChange callback
+    
+    // Month navigation (Collections)
+    document.getElementById('prevMonthCollections')?.addEventListener('click', () => changeCollectionsMonth('prev'));
+    document.getElementById('nextMonthCollections')?.addEventListener('click', () => changeCollectionsMonth('next'));
+    
+    // Month navigation (Expenses)
+    document.getElementById('prevMonthExpenses')?.addEventListener('click', () => changeExpensesMonth('prev'));
+    document.getElementById('nextMonthExpenses')?.addEventListener('click', () => changeExpensesMonth('next'));
     
     // Mobile menu
     document.getElementById('mobileMenuBtn')?.addEventListener('click', openMobileMenu);
