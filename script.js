@@ -154,9 +154,14 @@ function getTotalCollectedForMonth(month) {
 // Get total corpus for all time
 function getTotalCorpusAllTime() {
     const allCollections = getAllCollections();
-    return allCollections
-        .filter(col => col.type === 'Corpus Amount' || col.subType === 'corpus')
-        .reduce((sum, col) => sum + parseFloat(col.amount || 0), 0);
+    const corpusCollections = allCollections.filter(col => {
+        const isCorpus = col.type === 'Corpus Amount' || col.subType === 'corpus';
+        return isCorpus;
+    });
+    return corpusCollections.reduce((sum, col) => {
+        const amount = parseFloat(col.amount || 0);
+        return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
 }
 
 // ============================================
@@ -366,18 +371,53 @@ function updateDashboard() {
     const expenses = getExpensesByMonth(monthKey);
     const collections = getCollectionsByMonth(monthKey);
     
-    // Calculate stats
+    // Calculate monthly stats (for this month)
     const maintenanceIncome = collections
         .filter(c => c.type === 'Maintenance' || c.subType === 'maintenance')
-        .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
+        .reduce((sum, c) => {
+            const amount = parseFloat(c.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
     
-    const totalExpense = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-    const balance = maintenanceIncome - totalExpense;
+    const corpusIncome = collections
+        .filter(c => {
+            const isCorpus = c.type === 'Corpus Amount' || c.subType === 'corpus';
+            return isCorpus;
+        })
+        .reduce((sum, c) => {
+            const amount = parseFloat(c.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+    
+    const totalExpense = expenses.reduce((sum, exp) => {
+        const amount = parseFloat(exp.amount || 0);
+        return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+    
+    // Calculate all-time stats for Current Balance
+    const allCollections = getAllCollections();
+    const allExpenses = getAllExpenses();
+    
+    const allTimeMaintenance = allCollections
+        .filter(c => c.type === 'Maintenance' || c.subType === 'maintenance')
+        .reduce((sum, c) => {
+            const amount = parseFloat(c.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+    
+    const allTimeExpenses = allExpenses.reduce((sum, exp) => {
+        const amount = parseFloat(exp.amount || 0);
+        return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+    
+    // Current Balance = All-time maintenance - All-time expenses
+    const balance = allTimeMaintenance - allTimeExpenses;
     const allTimeCorpus = getTotalCorpusAllTime();
     
     // Update stat cards
     document.getElementById('currentBalance').textContent = formatCurrency(balance);
     document.getElementById('maintenanceCollected').textContent = formatCurrency(maintenanceIncome);
+    document.getElementById('corpusCollected').textContent = formatCurrency(corpusIncome);
     document.getElementById('totalExpenses').textContent = formatCurrency(totalExpense);
     document.getElementById('totalCorpusFund').textContent = formatCurrency(allTimeCorpus);
     
@@ -649,7 +689,7 @@ function handleAddCollection(e) {
         month: monthFormatted,
         date: dateValue,
         type: collectionType === 'corpus' ? 'Corpus Amount' : 'Maintenance',
-        subType: collectionType,
+        subType: collectionType, // 'maintenance' or 'corpus'
         flatNumber: flatNumber,
         category: flatNumber, // For compatibility
         amount: amount,
@@ -663,8 +703,11 @@ function handleAddCollection(e) {
     if (result.success) {
         showNotification('Collection added successfully!');
         closeCollectionModal();
-        displayCollectionsTable();
-        updateDashboard();
+        // Force refresh dashboard to show updated stats
+        setTimeout(() => {
+            displayCollectionsTable();
+            updateDashboard();
+        }, 100);
     } else {
         showNotification('Error adding collection: ' + (result.error || 'Unknown error'), 'error');
     }
