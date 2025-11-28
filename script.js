@@ -441,6 +441,81 @@ function updateDashboard() {
     
     // Update recent activity
     updateRecentActivity();
+    
+    // Update houses summary
+    updateHousesSummary();
+}
+
+function updateHousesSummary() {
+    const container = document.getElementById('housesSummary');
+    if (!container) return;
+    
+    const monthKey = currentMonth;
+    const collections = getCollectionsByMonth(monthKey);
+    
+    // Define all 8 flats
+    const flats = ['Flat 101', 'Flat 102', 'Flat 103', 'Flat 104', 'Flat 201', 'Flat 202', 'Flat 203', 'Flat 204'];
+    
+    // Calculate maintenance and corpus separately per flat
+    const flatData = {};
+    flats.forEach(flat => {
+        const flatCollections = collections.filter(c => (c.flatNumber || c.category) === flat);
+        
+        const maintenance = flatCollections
+            .filter(c => c.type === 'Maintenance' || c.subType === 'maintenance')
+            .reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+        
+        const corpus = flatCollections
+            .filter(c => c.type === 'Corpus Amount' || c.subType === 'corpus')
+            .reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+        
+        flatData[flat] = {
+            maintenance: maintenance,
+            corpus: corpus,
+            total: maintenance + corpus
+        };
+    });
+    
+    // Generate HTML for each flat
+    container.innerHTML = flats.map(flat => {
+        const data = flatData[flat];
+        const hasCollection = data.total > 0;
+        
+        return `
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-slate-900 text-sm">${flat}</h4>
+                    ${hasCollection ? '<div class="w-2 h-2 bg-emerald-500 rounded-full"></div>' : '<div class="w-2 h-2 bg-slate-300 rounded-full"></div>'}
+                </div>
+                <div class="space-y-2">
+                    <div>
+                        <p class="text-xs text-slate-500 mb-0.5">Maintenance</p>
+                        <p class="text-base font-bold ${data.maintenance > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                            ${formatCurrency(data.maintenance)}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 mb-0.5">Corpus</p>
+                        <p class="text-base font-bold ${data.corpus > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                            ${formatCurrency(data.corpus)}
+                        </p>
+                    </div>
+                    <div class="pt-2 border-t border-slate-200">
+                        <p class="text-xs text-slate-500 mb-0.5">Total</p>
+                        <p class="text-lg font-bold ${hasCollection ? 'text-slate-900' : 'text-slate-400'}">
+                            ${formatCurrency(data.total)}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function updateRecentActivity() {
