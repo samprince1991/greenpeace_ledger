@@ -16,6 +16,7 @@ let currentCollections = [];
 let maintenancePerFlat = CONFIG.DEFAULT_MAINTENANCE_PER_FLAT;
 let activeTab = UI_CONFIG.TABS.DASHBOARD;
 let collectionType = APP_CONFIG.DEFAULTS.COLLECTION_TYPE; // 'maintenance' or 'corpus'
+let expenseDeductionSource = APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE; // 'maintenance' or 'corpus'
 
 // ============================================
 // Data Storage Layer (localStorage)
@@ -337,6 +338,9 @@ function openExpenseModal() {
     if (expenseDatePicker) {
         expenseDatePicker.setDate(new Date(), true);
     }
+    // Reset deduction source to default
+    expenseDeductionSource = APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE;
+    updateExpenseDeductionButtons();
     // Reinitialize icons
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
@@ -358,6 +362,21 @@ function updateCollectionTypeButtons() {
     } else {
         maintenanceBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700';
         corpusBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-amber-600 shadow-sm';
+    }
+}
+
+function updateExpenseDeductionButtons() {
+    const maintenanceBtn = document.getElementById('expenseDeductionMaintenance');
+    const corpusBtn = document.getElementById('expenseDeductionCorpus');
+    
+    if (maintenanceBtn && corpusBtn) {
+        if (expenseDeductionSource === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE) {
+            maintenanceBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-indigo-600 shadow-sm';
+            corpusBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700';
+        } else {
+            maintenanceBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700';
+            corpusBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-amber-600 shadow-sm';
+        }
     }
 }
 
@@ -407,6 +426,21 @@ function updateDashboard() {
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0);
     
+    // Separate expenses by deduction source
+    const maintenanceExpenses = expenses.filter(exp => {
+        const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                        exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                        exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+        return !isCorpus;
+    });
+    
+    const corpusExpenses = expenses.filter(exp => {
+        const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                        exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                        exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+        return isCorpus;
+    });
+    
     const totalExpense = expenses.reduce((sum, exp) => {
         const amount = parseFloat(exp.amount || 0);
         return sum + (isNaN(amount) ? 0 : amount);
@@ -424,21 +458,44 @@ function updateDashboard() {
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0);
     
-    const allTimeExpenses = allExpenses.reduce((sum, exp) => {
-        const amount = parseFloat(exp.amount || 0);
-        return sum + (isNaN(amount) ? 0 : amount);
-    }, 0);
+    // Separate all-time expenses by deduction source
+    const allTimeMaintenanceExpenses = allExpenses
+        .filter(exp => {
+            const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                            exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                            exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+            return !isCorpus;
+        })
+        .reduce((sum, exp) => {
+            const amount = parseFloat(exp.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
     
-    // Current Balance = All-time maintenance - All-time expenses
-    const balance = allTimeMaintenance - allTimeExpenses;
+    // Current Balance = All-time maintenance - All-time maintenance expenses (not corpus expenses)
+    const balance = allTimeMaintenance - allTimeMaintenanceExpenses;
+    
+    // Calculate corpus fund: all-time corpus collections - all-time corpus expenses
     const allTimeCorpus = getTotalCorpusAllTime();
+    const allTimeCorpusExpenses = allExpenses
+        .filter(exp => {
+            const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                            exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                            exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+            return isCorpus;
+        })
+        .reduce((sum, exp) => {
+            const amount = parseFloat(exp.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+    
+    const corpusFundBalance = allTimeCorpus - allTimeCorpusExpenses;
     
     // Update stat cards
     document.getElementById('currentBalance').textContent = formatCurrency(balance);
     document.getElementById('maintenanceCollected').textContent = formatCurrency(maintenanceIncome);
     document.getElementById('corpusCollected').textContent = formatCurrency(corpusIncome);
     document.getElementById('totalExpenses').textContent = formatCurrency(totalExpense);
-    document.getElementById('totalCorpusFund').textContent = formatCurrency(allTimeCorpus);
+    document.getElementById('totalCorpusFund').textContent = formatCurrency(corpusFundBalance);
     
     // Update recent activity
     updateRecentActivity();
@@ -631,11 +688,14 @@ function displayExpensesTable() {
     });
     
     if (expenses.length === 0) {
-        tbody.innerHTML = '<tr><td colSpan="6" class="px-6 py-8 text-center text-slate-400">No expenses found.</td></tr>';
+        tbody.innerHTML = '<tr><td colSpan="7" class="px-6 py-8 text-center text-slate-400">No expenses found.</td></tr>';
         return;
     }
     
     tbody.innerHTML = expenses.map(e => {
+        const isCorpus = e.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                        e.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                        e.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
         return `
             <tr class="hover:bg-slate-50/80 transition-colors group">
                 <td class="px-6 py-4 text-slate-600">${formatDate(e.date)}</td>
@@ -645,6 +705,11 @@ function displayExpensesTable() {
                     </span>
                 </td>
                 <td class="px-6 py-4 text-slate-500 italic truncate" style="max-width: ${UI_CONFIG.DISPLAY_LIMITS.MAX_DESCRIPTION_LENGTH}px">${e.description || '-'}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium ${isCorpus ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">
+                        ${isCorpus ? APP_CONFIG.COLLECTION_TYPES.CORPUS.DISPLAY : APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.DISPLAY}
+                    </span>
+                </td>
                 <td class="px-6 py-4 text-slate-600">${e.paymentMode || '-'}</td>
                 <td class="px-6 py-4 text-right font-bold text-rose-600">${formatCurrency(parseFloat(e.amount || 0))}</td>
                 <td class="px-6 py-4 text-center">
@@ -737,7 +802,9 @@ function handleAddExpense(e) {
         description: description,
         amount: amount,
         paymentMode: paymentMode,
-        type: 'expense'
+        type: 'expense',
+        deductionSource: expenseDeductionSource, // 'maintenance' or 'corpus'
+        subType: expenseDeductionSource // For compatibility
     };
     
     const result = addExpense(expenseData);
@@ -1108,6 +1175,16 @@ function setupEventListeners() {
     document.getElementById('collectionTypeCorpus')?.addEventListener('click', function() {
         collectionType = APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
         updateCollectionTypeButtons();
+    });
+    
+    // Expense deduction source buttons
+    document.getElementById('expenseDeductionMaintenance')?.addEventListener('click', function() {
+        expenseDeductionSource = APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE;
+        updateExpenseDeductionButtons();
+    });
+    document.getElementById('expenseDeductionCorpus')?.addEventListener('click', function() {
+        expenseDeductionSource = APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
+        updateExpenseDeductionButtons();
     });
     
     // Forms

@@ -285,6 +285,10 @@
 
             <!-- Table -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="font-semibold text-slate-800">Collection Summary by Date</h3>
+                    <p class="text-xs text-slate-500 mt-1">Total amount received by date</p>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
                         <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-semibold">
@@ -335,6 +339,7 @@
                                 <th class="px-6 py-4">Date</th>
                                 <th class="px-6 py-4">Category</th>
                                 <th class="px-6 py-4">Description</th>
+                                <th class="px-6 py-4">Deduct From</th>
                                 <th class="px-6 py-4">Payment</th>
                                 <th class="px-6 py-4 text-right">Amount</th>
                                 <th class="px-6 py-4 text-center">Action</th>
@@ -342,7 +347,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-sm" id="expensesTableBody">
                             <tr>
-                                <td colSpan="6" class="px-6 py-8 text-center text-slate-400">No expenses found.</td>
+                                <td colSpan="7" class="px-6 py-8 text-center text-slate-400">No expenses found.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -485,6 +490,18 @@
                 <div>
                     <label class="block text-xs font-medium text-slate-500 mb-1">Description (Optional)</label>
                     <input type="text" id="expenseDescription" placeholder="e.g. November Maintenance" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Deduct From</label>
+                    <div class="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                        <button type="button" id="expenseDeductionMaintenance" class="flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-indigo-600 shadow-sm">
+                            Maintenance
+                        </button>
+                        <button type="button" id="expenseDeductionCorpus" class="flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700">
+                            Corpus Fund
+                        </button>
+                    </div>
                 </div>
 
                 <div>
