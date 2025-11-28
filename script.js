@@ -190,7 +190,22 @@ function formatCurrency(amount) {
 // Format date for display (DD-MM-YYYY format)
 function formatDate(dateString) {
     if (!dateString) return '-';
+    
+    // Handle DD-MM-YYYY format
+    if (dateString.includes('-') && dateString.split('-').length === 3) {
+        const parts = dateString.split('-');
+        // Check if it's already in DD-MM-YYYY format
+        if (parts[0].length <= 2 && parts[1].length <= 2) {
+            return dateString; // Already in correct format
+        }
+    }
+    
+    // Try to parse as Date
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+        return dateString; // Return as-is if can't parse
+    }
+    
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
@@ -273,12 +288,12 @@ function switchTab(tabName) {
 function openCollectionModal() {
     const modal = document.getElementById('collectionModal');
     modal.classList.remove('hidden');
-    // Set default date
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('collectionDate').value = today;
     // Reset form
     document.getElementById('collectionForm').reset();
-    document.getElementById('collectionDate').value = today;
+    // Set default date using Flatpickr
+    if (collectionDatePicker) {
+        collectionDatePicker.setDate(new Date(), true);
+    }
     collectionType = 'maintenance';
     updateCollectionTypeButtons();
     // Reinitialize icons
@@ -295,12 +310,12 @@ function closeCollectionModal() {
 function openExpenseModal() {
     const modal = document.getElementById('expenseModal');
     modal.classList.remove('hidden');
-    // Set default date
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('expenseDate').value = today;
     // Reset form
     document.getElementById('expenseForm').reset();
-    document.getElementById('expenseDate').value = today;
+    // Set default date using Flatpickr
+    if (expenseDatePicker) {
+        expenseDatePicker.setDate(new Date(), true);
+    }
     // Reinitialize icons
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
@@ -537,13 +552,25 @@ function handleDeleteCollection(id) {
 function handleAddExpense(e) {
     e.preventDefault();
     
-    const date = document.getElementById('expenseDate').value;
+    // Get date from Flatpickr or input
+    let dateValue;
+    if (expenseDatePicker && expenseDatePicker.selectedDates.length > 0) {
+        const selectedDate = expenseDatePicker.selectedDates[0];
+        // Format as DD-MM-YYYY
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const year = selectedDate.getFullYear();
+        dateValue = `${day}-${month}-${year}`;
+    } else {
+        dateValue = document.getElementById('expenseDate').value;
+    }
+    
     const amount = parseFloat(document.getElementById('expenseAmount').value);
     const category = document.getElementById('expenseCategory').value;
     const description = document.getElementById('expenseDescription').value;
     const paymentMode = document.querySelector('input[name="expensePaymentMode"]:checked').value;
     
-    if (!date || !amount || !category || !paymentMode) {
+    if (!dateValue || !amount || !category || !paymentMode) {
         showNotification('Please fill in all required fields.', 'error');
         return;
     }
@@ -553,14 +580,15 @@ function handleAddExpense(e) {
         return;
     }
     
-    // Get month from date (YYYY-MM format)
-    const dateObj = new Date(date);
+    // Parse date from DD-MM-YYYY format
+    const dateParts = dateValue.split('-');
+    const dateObj = new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0]));
     const month = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
     const monthFormatted = convertMonthFormat(month);
     
     const expenseData = {
         month: monthFormatted,
-        date: date,
+        date: dateValue,
         category: category,
         description: description,
         amount: amount,
@@ -583,13 +611,25 @@ function handleAddExpense(e) {
 function handleAddCollection(e) {
     e.preventDefault();
     
-    const date = document.getElementById('collectionDate').value;
+    // Get date from Flatpickr or input
+    let dateValue;
+    if (collectionDatePicker && collectionDatePicker.selectedDates.length > 0) {
+        const selectedDate = collectionDatePicker.selectedDates[0];
+        // Format as DD-MM-YYYY
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const year = selectedDate.getFullYear();
+        dateValue = `${day}-${month}-${year}`;
+    } else {
+        dateValue = document.getElementById('collectionDate').value;
+    }
+    
     const amount = parseFloat(document.getElementById('collectionAmount').value);
     const flatNumber = document.getElementById('collectionFlatNumber').value;
     const description = document.getElementById('collectionDescription').value;
     const paymentMode = document.querySelector('input[name="collectionPaymentMode"]:checked').value;
     
-    if (!date || !amount || !flatNumber || !paymentMode) {
+    if (!dateValue || !amount || !flatNumber || !paymentMode) {
         showNotification('Please fill in all required fields.', 'error');
         return;
     }
@@ -599,14 +639,15 @@ function handleAddCollection(e) {
         return;
     }
     
-    // Get month from date (YYYY-MM format)
-    const dateObj = new Date(date);
+    // Parse date from DD-MM-YYYY format
+    const dateParts = dateValue.split('-');
+    const dateObj = new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0]));
     const month = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
     const monthFormatted = convertMonthFormat(month);
     
     const collectionData = {
         month: monthFormatted,
-        date: date,
+        date: dateValue,
         type: collectionType === 'corpus' ? 'Corpus Amount' : 'Maintenance',
         subType: collectionType,
         flatNumber: flatNumber,
@@ -641,19 +682,102 @@ function updateMonthSelector() {
 }
 
 function changeMonth(direction) {
-    const [year, month] = currentMonth.split('-').map(Number);
-    const date = new Date(year, month - 1, 1);
-    
-    if (direction === 'prev') {
-        date.setMonth(date.getMonth() - 1);
+    if (monthSelectorPicker) {
+        const currentDate = monthSelectorPicker.selectedDates[0] || new Date();
+        const newDate = new Date(currentDate);
+        
+        if (direction === 'prev') {
+            newDate.setMonth(newDate.getMonth() - 1);
+        } else {
+            newDate.setMonth(newDate.getMonth() + 1);
+        }
+        
+        monthSelectorPicker.setDate(newDate, true);
     } else {
-        date.setMonth(date.getMonth() + 1);
+        // Fallback if Flatpickr not initialized
+        const [year, month] = currentMonth.split('-').map(Number);
+        const date = new Date(year, month - 1, 1);
+        
+        if (direction === 'prev') {
+            date.setMonth(date.getMonth() - 1);
+        } else {
+            date.setMonth(date.getMonth() + 1);
+        }
+        
+        currentMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        currentMonthFormatted = convertMonthFormat(currentMonth);
+        updateMonthSelector();
+        updateDashboard();
+    }
+}
+
+// ============================================
+// Flatpickr Initialization
+// ============================================
+
+let monthSelectorPicker = null;
+let collectionDatePicker = null;
+let expenseDatePicker = null;
+
+function initializeFlatpickr() {
+    // Check if Flatpickr is loaded
+    if (typeof flatpickr === 'undefined') {
+        console.warn('Flatpickr not loaded');
+        return;
     }
     
-    currentMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    currentMonthFormatted = convertMonthFormat(currentMonth);
-    updateMonthSelector();
-    updateDashboard();
+    // Initialize month selector with monthSelectPlugin
+    const monthSelectorInput = document.getElementById('monthSelector');
+    if (monthSelectorInput && typeof monthSelectPlugin !== 'undefined') {
+        const now = new Date();
+        const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        
+        monthSelectorPicker = flatpickr(monthSelectorInput, {
+            plugins: [new monthSelectPlugin({
+                shorthand: false,
+                dateFormat: "F Y",
+                altFormat: "F Y"
+            })],
+            dateFormat: "Y-m",
+            defaultDate: now,
+            onChange: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length > 0) {
+                    const date = selectedDates[0];
+                    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    currentMonth = month;
+                    currentMonthFormatted = convertMonthFormat(month);
+                    updateDashboard();
+                }
+            }
+        });
+        
+        // Set initial value
+        monthSelectorInput.value = monthSelectorPicker.input.value;
+    }
+    
+    // Initialize collection date picker
+    const collectionDateInput = document.getElementById('collectionDate');
+    if (collectionDateInput) {
+        collectionDatePicker = flatpickr(collectionDateInput, {
+            dateFormat: "d-m-Y",
+            defaultDate: new Date(),
+            allowInput: true,
+            clickOpens: true,
+            animate: true
+        });
+    }
+    
+    // Initialize expense date picker
+    const expenseDateInput = document.getElementById('expenseDate');
+    if (expenseDateInput) {
+        expenseDatePicker = flatpickr(expenseDateInput, {
+            dateFormat: "d-m-Y",
+            defaultDate: new Date(),
+            allowInput: true,
+            clickOpens: true,
+            animate: true
+        });
+    }
 }
 
 // ============================================
@@ -668,15 +792,11 @@ document.addEventListener('DOMContentLoaded', function() {
     currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     currentMonthFormatted = convertMonthFormat(currentMonth);
     
-    // Set default dates in modals
-    const today = new Date().toISOString().split('T')[0];
-    const collectionDateEl = document.getElementById('collectionDate');
-    const expenseDateEl = document.getElementById('expenseDate');
-    if (collectionDateEl) collectionDateEl.value = today;
-    if (expenseDateEl) expenseDateEl.value = today;
-    
     // Initialize month selector
     updateMonthSelector();
+    
+    // Initialize Flatpickr (this will set default dates)
+    initializeFlatpickr();
     
     // Setup event listeners
     setupEventListeners();
@@ -729,11 +849,7 @@ function setupEventListeners() {
     // Month navigation
     document.getElementById('prevMonth')?.addEventListener('click', () => changeMonth('prev'));
     document.getElementById('nextMonth')?.addEventListener('click', () => changeMonth('next'));
-    document.getElementById('monthSelector')?.addEventListener('change', function() {
-        currentMonth = this.value;
-        currentMonthFormatted = convertMonthFormat(currentMonth);
-        updateDashboard();
-    });
+    // Month selector change is handled by Flatpickr's onChange callback
     
     // Mobile menu
     document.getElementById('mobileMenuBtn')?.addEventListener('click', openMobileMenu);
