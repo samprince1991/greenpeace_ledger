@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apartment Maintenance Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Flatpickr MonthSelect Plugin CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <style>
+        /* Custom styles for better UX */
+        .notification {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-3xl font-bold">Apartment Maintenance Tracker</h1>
+            <p class="text-blue-100 mt-1">Manage expenses for 8 apartments</p>
+        </div>
+    </header>
+
+    <!-- Notification Area -->
+    <div id="notification" class="notification fixed top-4 right-4 z-50 hidden">
+        <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg" id="notification-content">
+            Success!
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Monthly Summary Dashboard -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Monthly Summary</h2>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <input type="text" id="monthSelector" placeholder="Select Month" 
+                               class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="refreshBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                        <p class="text-sm text-gray-600">Selected Month</p>
+                        <p class="text-2xl font-bold text-gray-800" id="selectedMonth">-</p>
+                    </div>
+                    <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                        <p class="text-sm text-gray-600">Total Collected</p>
+                        <p class="text-2xl font-bold text-gray-800" id="totalCollected">₹0</p>
+                        <p class="text-xs text-gray-500 mt-1">Maintenance only</p>
+                    </div>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+                        <p class="text-sm text-gray-600">Total Corpus</p>
+                        <p class="text-2xl font-bold text-gray-800" id="totalCorpus">₹0</p>
+                        <p class="text-xs text-gray-500 mt-1">Separate fund (not for expenses)</p>
+                    </div>
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                        <p class="text-sm text-gray-600">Total Expenses</p>
+                        <p class="text-2xl font-bold text-gray-800" id="totalExpenses">₹0</p>
+                    </div>
+                    <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded">
+                        <p class="text-sm text-gray-600">Remaining Balance</p>
+                        <p class="text-2xl font-bold text-gray-800" id="remainingBalance">₹0</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Add Collection Form -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Add Collection (Per Flat)</h2>
+                <form id="collectionForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Month (e.g., June-2025)</label>
+                        <input type="text" id="collectionMonth" placeholder="June-2025" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                        <input type="date" id="collectionDate" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                        <select id="collectionType" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                required>
+                            <option value="">Select Type</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Corpus Amount">Corpus Amount</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Flat Number</label>
+                        <select id="collectionFlatNumber" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                required>
+                            <option value="">Select Flat</option>
+                            <option value="1A">Flat 1A</option>
+                            <option value="1B">Flat 1B</option>
+                            <option value="2A">Flat 2A</option>
+                            <option value="2B">Flat 2B</option>
+                            <option value="3A">Flat 3A</option>
+                            <option value="3B">Flat 3B</option>
+                            <option value="4A">Flat 4A</option>
+                            <option value="4B">Flat 4B</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount (₹)</label>
+                        <input type="number" id="collectionAmount" placeholder="0.00" step="0.01" min="0" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Collected By</label>
+                        <input type="text" id="collectionCollectedBy" placeholder="Name" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Payment Mode</label>
+                        <select id="collectionPaymentMode" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                required>
+                            <option value="">Select Payment Mode</option>
+                            <option value="Cash">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="Bank">Bank</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-3">
+                        <button type="submit" 
+                                class="w-full md:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                            Add Collection
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Maintenance Collection List -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Maintenance Collections</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-green-100">
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Flat Number</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Collected By</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Mode</th>
+                            </tr>
+                        </thead>
+                        <tbody id="maintenanceCollectionTableBody">
+                            <tr>
+                                <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                    No maintenance collections found for selected month.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Corpus Collection List -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Corpus Collections</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-yellow-100">
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Flat Number</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Collected By</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Mode</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpusCollectionTableBody">
+                            <tr>
+                                <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                    No corpus collections found for selected month.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Add Expense Form -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Add New Expense</h2>
+                <form id="expenseForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Month (e.g., June-2025)</label>
+                        <input type="text" id="expenseMonth" placeholder="June-2025" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                        <input type="date" id="expenseDate" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                        <select id="expenseCategory" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required>
+                            <option value="">Select Category</option>
+                            <option value="Electricity">Electricity</option>
+                            <option value="Water">Water</option>
+                            <option value="Security">Security</option>
+                            <option value="Cleaning">Cleaning</option>
+                            <option value="Repair">Repair</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <input type="text" id="expenseDescription" placeholder="Enter expense description" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount (₹)</label>
+                        <input type="number" id="expenseAmount" placeholder="0.00" step="0.01" min="0" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Paid By</label>
+                        <input type="text" id="expensePaidBy" placeholder="Name" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Payment Mode</label>
+                        <select id="expensePaymentMode" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required>
+                            <option value="">Select Payment Mode</option>
+                            <option value="Cash">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="Bank">Bank</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-3">
+                        <button type="submit" 
+                                class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                            Add Expense
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Expense List -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Expense List</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Paid By</th>
+                                <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Mode</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTableBody">
+                            <tr>
+                                <td colspan="6" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                    No expenses found for selected month. Add an expense to get started.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Monthly Reports</h2>
+                <div class="mb-6">
+                    <div class="flex flex-col sm:flex-row gap-4 items-end">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Month for Report</label>
+                            <select id="reportMonthSelector" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        <button id="generateReportBtn" 
+                                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                            Generate Monthly Report
+                        </button>
+                        <button id="exportCSVBtn" 
+                                class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium">
+                            Export to CSV
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="reportSection" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                            <p class="text-sm text-gray-600">Total Income</p>
+                            <p class="text-2xl font-bold text-gray-800" id="reportTotalIncome">₹0</p>
+                        </div>
+                        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                            <p class="text-sm text-gray-600">Total Expenses</p>
+                            <p class="text-2xl font-bold text-gray-800" id="reportTotalExpenses">₹0</p>
+                        </div>
+                        <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded">
+                            <p class="text-sm text-gray-600">Balance Remaining</p>
+                            <p class="text-2xl font-bold text-gray-800" id="reportBalanceRemaining">₹0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Paid By</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Mode</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportTableBody">
+                                <!-- Report data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Settings</h2>
+                <div class="space-y-6">
+                    <div class="max-w-md">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Monthly Maintenance per Flat (₹)</label>
+                        <div class="flex gap-4">
+                            <input type="number" id="maintenanceAmount" placeholder="2000" min="0" step="0.01" 
+                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button id="saveSettingsBtn" 
+                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                Save
+                            </button>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Total monthly collection: ₹<span id="totalCollection">0</span> (8 flats × maintenance amount)</p>
+                    </div>
+                    
+                    <div class="border-t pt-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Data Management</h3>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button id="exportJSONBtn" 
+                                    class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                                Export Data (JSON)
+                            </button>
+                            <label class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium cursor-pointer text-center">
+                                Import Data (JSON)
+                                <input type="file" id="importJSONBtn" accept=".json" class="hidden">
+                            </label>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Backup your data or restore from a previous backup</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Flatpickr MonthSelect Plugin JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
