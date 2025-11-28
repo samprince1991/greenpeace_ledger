@@ -454,7 +454,7 @@ function updateHousesSummary() {
     const collections = getCollectionsByMonth(monthKey);
     
     // Define all 8 flats
-    const flats = ['Flat 101', 'Flat 102', 'Flat 103', 'Flat 104', 'Flat 201', 'Flat 202', 'Flat 203', 'Flat 204'];
+    const flats = ['1A', '2A', '3A', '4A', '1B', '2B', '3B', '4B'];
     
     // Calculate maintenance and corpus separately per flat
     const flatData = {};
