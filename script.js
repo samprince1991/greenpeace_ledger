@@ -290,6 +290,7 @@ function switchTab(tabName) {
             }
         }
         displayCollectionsTable();
+        updateHousesSummary();
     } else if (tabName === UI_CONFIG.TABS.EXPENSES) {
         if (!expensesMonth) {
             expensesMonth = defaultMonth;
@@ -441,16 +442,14 @@ function updateDashboard() {
     
     // Update recent activity
     updateRecentActivity();
-    
-    // Update houses summary
-    updateHousesSummary();
 }
 
 function updateHousesSummary() {
     const container = document.getElementById('housesSummary');
     if (!container) return;
     
-    const monthKey = currentMonth;
+    // Use collectionsMonth if on collections page, otherwise use currentMonth (for dashboard)
+    const monthKey = activeTab === UI_CONFIG.TABS.COLLECTIONS && collectionsMonth ? collectionsMonth : currentMonth;
     const collections = getCollectionsByMonth(monthKey);
     
     // Get flats from config
@@ -577,6 +576,9 @@ function displayCollectionsTable() {
         const dateB = new Date(b.date || b.createdAt);
         return dateB - dateA;
     });
+    
+    // Update houses summary when collections table is displayed
+    updateHousesSummary();
     
     if (collections.length === 0) {
         tbody.innerHTML = '<tr><td colSpan="6" class="px-6 py-8 text-center text-slate-400">No collections found.</td></tr>';
@@ -807,7 +809,7 @@ function handleAddCollection(e) {
     if (result.success) {
         showNotification('Collection added successfully!');
         closeCollectionModal();
-        // Force refresh dashboard to show updated stats
+        // Force refresh dashboard and collections to show updated stats
         setTimeout(() => {
             displayCollectionsTable();
             updateDashboard();
@@ -887,6 +889,7 @@ function changeCollectionsMonth(direction) {
         
         collectionsMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         displayCollectionsTable();
+        updateHousesSummary();
     }
 }
 
@@ -1010,6 +1013,7 @@ function initializeFlatpickr() {
                     const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     collectionsMonth = month;
                     displayCollectionsTable();
+                    updateHousesSummary();
                 }
             }
         });
