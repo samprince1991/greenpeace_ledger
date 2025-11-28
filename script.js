@@ -990,6 +990,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Setup event listeners
     setupEventListeners();
     
+    // Ensure correct tab is shown on load
+    switchTab('dashboard');
+    
     // Initialize dashboard
     updateDashboard();
     displayCollectionsTable();
