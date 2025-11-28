@@ -1,12 +1,9 @@
-// Configuration
+// Configuration - loaded from config files
+// Note: Config files must be loaded before this script
 const CONFIG = {
-    DEFAULT_MAINTENANCE_PER_FLAT: 2000,
-    TOTAL_FLATS: 8,
-    STORAGE_KEYS: {
-        EXPENSES: 'apartment_maintenance_expenses',
-        SETTINGS: 'apartment_maintenance_settings',
-        COLLECTIONS: 'apartment_maintenance_collections'
-    }
+    DEFAULT_MAINTENANCE_PER_FLAT: APP_CONFIG.DEFAULT_MAINTENANCE_PER_FLAT,
+    TOTAL_FLATS: APP_CONFIG.TOTAL_FLATS,
+    STORAGE_KEYS: APP_CONFIG.STORAGE_KEYS
 };
 
 // Global state
@@ -17,8 +14,8 @@ let expensesMonth = ''; // Format: YYYY-MM for Expenses tab
 let currentExpenses = [];
 let currentCollections = [];
 let maintenancePerFlat = CONFIG.DEFAULT_MAINTENANCE_PER_FLAT;
-let activeTab = 'dashboard';
-let collectionType = 'maintenance'; // 'maintenance' or 'corpus'
+let activeTab = UI_CONFIG.TABS.DASHBOARD;
+let collectionType = APP_CONFIG.DEFAULTS.COLLECTION_TYPE; // 'maintenance' or 'corpus'
 
 // ============================================
 // Data Storage Layer (localStorage)
@@ -32,7 +29,7 @@ function initializeStorage() {
     
     if (!localStorage.getItem(CONFIG.STORAGE_KEYS.SETTINGS)) {
         const defaultSettings = {
-            MaintenancePerFlat: CONFIG.DEFAULT_MAINTENANCE_PER_FLAT.toString()
+            MaintenancePerFlat: APP_CONFIG.DEFAULT_MAINTENANCE_PER_FLAT.toString()
         };
         localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(defaultSettings));
     }
@@ -145,11 +142,12 @@ function deleteCollection(id) {
     }
 }
 
-// Get total collected for a specific month (maintenance only)
+    // Get total collected for a specific month (maintenance only)
 function getTotalCollectedForMonth(month) {
     const collections = getCollectionsByMonth(month);
     return collections
-        .filter(col => col.type === 'Maintenance' || col.subType === 'maintenance')
+        .filter(col => col.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                      col.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
         .reduce((sum, col) => sum + parseFloat(col.amount || 0), 0);
 }
 
@@ -157,7 +155,8 @@ function getTotalCollectedForMonth(month) {
 function getTotalCorpusAllTime() {
     const allCollections = getAllCollections();
     const corpusCollections = allCollections.filter(col => {
-        const isCorpus = col.type === 'Corpus Amount' || col.subType === 'corpus';
+        const isCorpus = col.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                        col.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
         return isCorpus;
     });
     return corpusCollections.reduce((sum, col) => {
@@ -179,18 +178,16 @@ function convertMonthFormat(monthStr) {
     }
     // Convert YYYY-MM to MonthName-YYYY
     const [year, month] = monthStr.split('-');
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December'];
     const monthIndex = parseInt(month) - 1;
-    return `${monthNames[monthIndex]}-${year}`;
+    return `${APP_CONFIG.MONTH_NAMES[monthIndex]}-${year}`;
 }
 
 // Format currency
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat(APP_CONFIG.CURRENCY.LOCALE, {
         style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0
+        currency: APP_CONFIG.CURRENCY.CODE,
+        maximumFractionDigits: APP_CONFIG.CURRENCY.MAX_FRACTION_DIGITS
     }).format(amount);
 }
 
@@ -225,7 +222,7 @@ function showNotification(message, type = 'success') {
     const content = document.getElementById('notification-content');
     
     content.textContent = message;
-    if (type === 'error') {
+    if (type === UI_CONFIG.NOTIFICATION.TYPES.ERROR) {
         content.className = 'bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg';
     } else {
         content.className = 'bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg';
@@ -234,7 +231,7 @@ function showNotification(message, type = 'success') {
     notification.classList.remove('hidden');
     setTimeout(() => {
         notification.classList.add('hidden');
-    }, 3000);
+    }, UI_CONFIG.NOTIFICATION.TIMEOUT);
 }
 
 // ============================================
@@ -283,9 +280,9 @@ function switchTab(tabName) {
     const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     
     // Refresh data for the active tab
-    if (tabName === 'dashboard') {
+    if (tabName === UI_CONFIG.TABS.DASHBOARD) {
         updateDashboard();
-    } else if (tabName === 'collections') {
+    } else if (tabName === UI_CONFIG.TABS.COLLECTIONS) {
         if (!collectionsMonth) {
             collectionsMonth = defaultMonth;
             if (collectionsMonthPicker) {
@@ -293,7 +290,7 @@ function switchTab(tabName) {
             }
         }
         displayCollectionsTable();
-    } else if (tabName === 'expenses') {
+    } else if (tabName === UI_CONFIG.TABS.EXPENSES) {
         if (!expensesMonth) {
             expensesMonth = defaultMonth;
             if (expensesMonthPicker) {
@@ -317,7 +314,7 @@ function openCollectionModal() {
     if (collectionDatePicker) {
         collectionDatePicker.setDate(new Date(), true);
     }
-    collectionType = 'maintenance';
+    collectionType = APP_CONFIG.DEFAULTS.COLLECTION_TYPE;
     updateCollectionTypeButtons();
     // Reinitialize icons
     if (typeof lucide !== 'undefined') {
@@ -354,7 +351,7 @@ function updateCollectionTypeButtons() {
     const maintenanceBtn = document.getElementById('collectionTypeMaintenance');
     const corpusBtn = document.getElementById('collectionTypeCorpus');
     
-    if (collectionType === 'maintenance') {
+    if (collectionType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE) {
         maintenanceBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-indigo-600 shadow-sm';
         corpusBtn.className = 'flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700';
     } else {
@@ -391,7 +388,8 @@ function updateDashboard() {
     
     // Calculate monthly stats (for this month)
     const maintenanceIncome = collections
-        .filter(c => c.type === 'Maintenance' || c.subType === 'maintenance')
+        .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                    c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
         .reduce((sum, c) => {
             const amount = parseFloat(c.amount || 0);
             return sum + (isNaN(amount) ? 0 : amount);
@@ -399,7 +397,8 @@ function updateDashboard() {
     
     const corpusIncome = collections
         .filter(c => {
-            const isCorpus = c.type === 'Corpus Amount' || c.subType === 'corpus';
+            const isCorpus = c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                           c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
             return isCorpus;
         })
         .reduce((sum, c) => {
@@ -417,7 +416,8 @@ function updateDashboard() {
     const allExpenses = getAllExpenses();
     
     const allTimeMaintenance = allCollections
-        .filter(c => c.type === 'Maintenance' || c.subType === 'maintenance')
+        .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                    c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
         .reduce((sum, c) => {
             const amount = parseFloat(c.amount || 0);
             return sum + (isNaN(amount) ? 0 : amount);
@@ -453,8 +453,8 @@ function updateHousesSummary() {
     const monthKey = currentMonth;
     const collections = getCollectionsByMonth(monthKey);
     
-    // Define all 8 flats
-    const flats = ['1A', '2A', '3A', '4A', '1B', '2B', '3B', '4B'];
+    // Get flats from config
+    const flats = FLATS_CONFIG.FLATS;
     
     // Calculate maintenance and corpus separately per flat
     const flatData = {};
@@ -462,14 +462,16 @@ function updateHousesSummary() {
         const flatCollections = collections.filter(c => (c.flatNumber || c.category) === flat);
         
         const maintenance = flatCollections
-            .filter(c => c.type === 'Maintenance' || c.subType === 'maintenance')
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
             .reduce((sum, c) => {
                 const amount = parseFloat(c.amount || 0);
                 return sum + (isNaN(amount) ? 0 : amount);
             }, 0);
         
         const corpus = flatCollections
-            .filter(c => c.type === 'Corpus Amount' || c.subType === 'corpus')
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
             .reduce((sum, c) => {
                 const amount = parseFloat(c.amount || 0);
                 return sum + (isNaN(amount) ? 0 : amount);
@@ -522,7 +524,7 @@ function updateRecentActivity() {
         const dateA = new Date(a.createdAt || a.date);
         const dateB = new Date(b.createdAt || b.date);
         return dateB - dateA;
-    }).slice(0, 5);
+    }).slice(0, UI_CONFIG.DISPLAY_LIMITS.RECENT_ACTIVITY);
     
     if (allTransactions.length === 0) {
         container.innerHTML = '<div class="p-8 text-center text-slate-400">No transactions recorded yet.</div>';
@@ -531,7 +533,8 @@ function updateRecentActivity() {
     
     container.innerHTML = allTransactions.map(t => {
         const isCollection = t.transactionType === 'collection';
-        const isCorpus = t.subType === 'corpus' || t.type === 'Corpus Amount';
+        const isCorpus = t.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                        t.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
         const amount = parseFloat(t.amount || 0);
         
         return `
@@ -581,7 +584,8 @@ function displayCollectionsTable() {
     }
     
     tbody.innerHTML = collections.map(c => {
-        const isCorpus = c.subType === 'corpus' || c.type === 'Corpus Amount';
+        const isCorpus = c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                        c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
         const flatNumber = c.flatNumber || c.category || '-';
         
         return `
@@ -590,7 +594,7 @@ function displayCollectionsTable() {
                 <td class="px-6 py-4 font-medium text-slate-900">${flatNumber}</td>
                 <td class="px-6 py-4">
                     <span class="px-2 py-1 rounded-full text-xs font-medium ${isCorpus ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">
-                        ${isCorpus ? 'Corpus Fund' : 'Maintenance'}
+                        ${isCorpus ? APP_CONFIG.COLLECTION_TYPES.CORPUS.DISPLAY : APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.DISPLAY}
                     </span>
                 </td>
                 <td class="px-6 py-4 text-slate-600">${c.paymentMode || '-'}</td>
@@ -638,7 +642,7 @@ function displayExpensesTable() {
                         ${e.category || '-'}
                     </span>
                 </td>
-                <td class="px-6 py-4 text-slate-500 italic truncate max-w-[200px]">${e.description || '-'}</td>
+                <td class="px-6 py-4 text-slate-500 italic truncate" style="max-width: ${UI_CONFIG.DISPLAY_LIMITS.MAX_DESCRIPTION_LENGTH}px">${e.description || '-'}</td>
                 <td class="px-6 py-4 text-slate-600">${e.paymentMode || '-'}</td>
                 <td class="px-6 py-4 text-right font-bold text-rose-600">${formatCurrency(parseFloat(e.amount || 0))}</td>
                 <td class="px-6 py-4 text-center">
@@ -753,7 +757,7 @@ function handleAddCollection(e) {
     let dateValue;
     if (collectionDatePicker && collectionDatePicker.selectedDates.length > 0) {
         const selectedDate = collectionDatePicker.selectedDates[0];
-        // Format as DD-MM-YYYY
+        // Format as DD-MM-YYYY (using APP_CONFIG.DATE_FORMATS.DISPLAY format)
         const day = String(selectedDate.getDate()).padStart(2, '0');
         const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
         const year = selectedDate.getFullYear();
@@ -786,14 +790,16 @@ function handleAddCollection(e) {
     const collectionData = {
         month: monthFormatted,
         date: dateValue,
-        type: collectionType === 'corpus' ? 'Corpus Amount' : 'Maintenance',
+        type: collectionType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ? 
+              APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE : 
+              APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE,
         subType: collectionType, // 'maintenance' or 'corpus'
         flatNumber: flatNumber,
         category: flatNumber, // For compatibility
         amount: amount,
         description: description,
         paymentMode: paymentMode,
-        collectedBy: 'Admin' // Default value
+        collectedBy: APP_CONFIG.DEFAULTS.COLLECTED_BY
     };
     
     const result = addCollection(collectionData);
@@ -945,7 +951,7 @@ function initializeFlatpickr() {
                 dateFormat: "F Y",
                 altFormat: "F Y"
             })],
-            dateFormat: "Y-m",
+            dateFormat: APP_CONFIG.DATE_FORMATS.MONTH_SELECTOR.replace('YYYY', 'Y').replace('MM', 'm'),
             defaultDate: now,
             onChange: function(selectedDates, dateStr, instance) {
                 if (selectedDates.length > 0) {
@@ -966,7 +972,7 @@ function initializeFlatpickr() {
     const collectionDateInput = document.getElementById('collectionDate');
     if (collectionDateInput) {
         collectionDatePicker = flatpickr(collectionDateInput, {
-            dateFormat: "d-m-Y",
+            dateFormat: APP_CONFIG.DATE_FORMATS.DATE_PICKER,
             defaultDate: new Date(),
             allowInput: true,
             clickOpens: true,
@@ -978,7 +984,7 @@ function initializeFlatpickr() {
     const expenseDateInput = document.getElementById('expenseDate');
     if (expenseDateInput) {
         expenseDatePicker = flatpickr(expenseDateInput, {
-            dateFormat: "d-m-Y",
+            dateFormat: APP_CONFIG.DATE_FORMATS.DATE_PICKER,
             defaultDate: new Date(),
             allowInput: true,
             clickOpens: true,
@@ -1057,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     
     // Ensure correct tab is shown on load
-    switchTab('dashboard');
+    switchTab(UI_CONFIG.TABS.DASHBOARD);
     
     // Initialize dashboard
     updateDashboard();
@@ -1092,11 +1098,11 @@ function setupEventListeners() {
     
     // Collection type buttons
     document.getElementById('collectionTypeMaintenance')?.addEventListener('click', function() {
-        collectionType = 'maintenance';
+        collectionType = APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE;
         updateCollectionTypeButtons();
     });
     document.getElementById('collectionTypeCorpus')?.addEventListener('click', function() {
-        collectionType = 'corpus';
+        collectionType = APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
         updateCollectionTypeButtons();
     });
     
