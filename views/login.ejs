@@ -13,15 +13,21 @@
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <!-- Logo and Title -->
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-500 rounded-2xl mb-4">
-                <span class="font-bold text-2xl text-white">A</span>
-            </div>
-            <h1 class="text-2xl font-bold text-slate-900 mb-2">Apt. Tracker</h1>
-            <p class="text-slate-500">Sign in to your account</p>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <!-- Apartment Image -->
+        <div class="w-full h-48 overflow-hidden">
+            <img src="/images/appartment.jpg" alt="Willowbrook Apartment Building" class="w-full h-full object-cover">
         </div>
+        
+        <div class="p-8">
+            <!-- Logo and Title -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-500 rounded-2xl mb-4">
+                    <span class="font-bold text-2xl text-white">A</span>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900 mb-2">Apt. Tracker</h1>
+                <p class="text-slate-500">Sign in to your account</p>
+            </div>
 
         <!-- Error Message -->
         <% if (typeof error !== 'undefined' && error) { %>
@@ -84,11 +90,12 @@
             </button>
         </form>
 
-        <!-- Footer Note -->
-        <div class="mt-6 text-center">
-            <p class="text-xs text-slate-500">
-                Default credentials: admin / admin
-            </p>
+            <!-- Footer Note -->
+            <div class="mt-6 text-center">
+                <p class="text-xs text-slate-500">
+                    Default credentials: admin / admin
+                </p>
+            </div>
         </div>
     </div>
 
