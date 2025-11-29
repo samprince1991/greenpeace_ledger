@@ -38,7 +38,7 @@
             </div>
 
             <!-- Desktop Navigation Links -->
-            <div class="hidden md:flex items-center gap-1">
+            <div class="hidden md:flex items-center gap-2">
                 <button data-tab="dashboard" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-900/20">
                     <i data-lucide="layout-dashboard" class="w-[18px] h-[18px]"></i>
                     <span>Dashboard</span>
@@ -257,29 +257,6 @@
                         <i data-lucide="plus" class="w-[18px] h-[18px]"></i>
                         <span>Add New</span>
                     </button>
-                </div>
-            </div>
-
-            <!-- Houses Collection Summary -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100">
-                    <h3 class="font-semibold text-slate-800">Collection Summary by House</h3>
-                    <p class="text-xs text-slate-500 mt-1">Total amount received from each flat this month</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-semibold">
-                            <tr>
-                                <th class="px-6 py-4">Flat No.</th>
-                                <th class="px-6 py-4 text-right">Maintenance</th>
-                                <th class="px-6 py-4 text-right">Corpus</th>
-                                <th class="px-6 py-4 text-right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 text-sm" id="housesSummary">
-                            <!-- Houses will be dynamically populated here -->
-                        </tbody>
-                    </table>
                 </div>
             </div>
 

@@ -333,7 +333,6 @@ function switchTab(tabName) {
             }
         }
         displayCollectionsTable();
-        updateHousesSummary();
     } else if (tabName === UI_CONFIG.TABS.EXPENSES) {
         if (!expensesMonth) {
             expensesMonth = defaultMonth;
@@ -938,9 +937,6 @@ async function displayCollectionsTable() {
         return dateB - dateA;
     });
     
-    // Update houses summary when collections table is displayed
-    await updateHousesSummary();
-    
     if (collections.length === 0) {
         tbody.innerHTML = '<tr><td colSpan="6" class="px-6 py-8 text-center text-slate-400">No collections found.</td></tr>';
         return;
@@ -1274,7 +1270,6 @@ function changeCollectionsMonth(direction) {
         
         collectionsMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         displayCollectionsTable();
-        updateHousesSummary();
     }
 }
 
@@ -1431,7 +1426,6 @@ function initializeFlatpickr() {
                     const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     collectionsMonth = month;
                     await displayCollectionsTable();
-                    await updateHousesSummary();
                 }
             }
         });
