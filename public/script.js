@@ -707,9 +707,9 @@ async function displayCollectionsTable() {
                 <td class="px-6 py-4 text-slate-600">${c.paymentMode || '-'}</td>
                 <td class="px-6 py-4 text-right font-bold text-slate-700">${formatCurrency(parseFloat(c.amount || 0))}</td>
                 <td class="px-6 py-4 text-center">
-                    <button onclick="handleDeleteCollection('${c.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1">
+                    ${hasPermission('delete_collection') ? `<button onclick="handleDeleteCollection('${c.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
+                    </button>` : ''}
                 </td>
             </tr>
         `;
@@ -772,9 +772,9 @@ async function displayExpensesTable() {
                 <td class="px-6 py-4 text-slate-600">${e.paymentMode || '-'}</td>
                 <td class="px-6 py-4 text-right font-bold text-rose-600">${formatCurrency(parseFloat(e.amount || 0))}</td>
                 <td class="px-6 py-4 text-center">
-                    <button onclick="handleDeleteExpense('${e.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1">
+                    ${hasPermission('delete_expense') ? `<button onclick="handleDeleteExpense('${e.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
+                    </button>` : ''}
                 </td>
             </tr>
         `;

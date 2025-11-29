@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const morgan = require('morgan');
+const session = require('express-session');
 
 // Import routes
 const indexRoutes = require('./routes/index');
@@ -10,6 +11,7 @@ const healthRoutes = require('./routes/health');
 const expenseRoutes = require('./routes/expenses');
 const collectionRoutes = require('./routes/collections');
 const summaryRoutes = require('./routes/summary');
+const authRoutes = require('./routes/auth');
 
 // Import middleware
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
@@ -20,6 +22,19 @@ const PORT = process.env.PORT || 3000;
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 
 // Middleware
 app.use(express.json());
@@ -33,6 +48,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/config', express.static(path.join(__dirname, 'config')));
 
 // Routes
+app.use('/auth', authRoutes);
 app.use('/', indexRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/expenses', expenseRoutes);

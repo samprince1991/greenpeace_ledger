@@ -51,10 +51,12 @@
                     <i data-lucide="receipt" class="w-[18px] h-[18px]"></i>
                     <span>Expenses</span>
                 </button>
+                <% if (typeof permissions !== 'undefined' && permissions.includes('view_reports')) { %>
                 <button data-tab="reports" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
                     <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
                     <span>Reports</span>
                 </button>
+                <% } %>
             </div>
 
             <!-- Right Side: Profile & Mobile Toggle -->
@@ -62,12 +64,15 @@
                 <!-- User Profile (Desktop) -->
                 <div class="hidden md:flex items-center gap-3 pl-4 border-l border-slate-700">
                     <div class="text-right hidden lg:block">
-                        <p class="text-sm font-medium text-white">Admin</p>
-                        <p class="text-xs text-slate-500">Secretary</p>
+                        <p class="text-sm font-medium text-white"><%= typeof user !== 'undefined' && user ? user.username : 'User' %></p>
+                        <p class="text-xs text-slate-500"><%= typeof user !== 'undefined' && user ? user.roleName : 'Role' %></p>
                     </div>
                     <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-600">
-                        AD
+                        <%= typeof user !== 'undefined' && user && user.username ? user.username.substring(0, 2).toUpperCase() : 'U' %>
                     </div>
+                    <a href="/auth/logout" class="ml-2 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors" title="Logout">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </a>
                 </div>
 
                 <!-- Mobile Menu Button -->
@@ -104,23 +109,29 @@
                     <i data-lucide="receipt" class="w-5 h-5"></i>
                     <span>Expenses</span>
                 </button>
+                <% if (typeof permissions !== 'undefined' && permissions.includes('view_reports')) { %>
                 <button data-tab="reports" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
                     <i data-lucide="file-text" class="w-5 h-5"></i>
                     <span>Reports</span>
                 </button>
+                <% } %>
             </div>
             
             <!-- User Profile (Mobile Footer) -->
             <div class="pt-4 border-t border-slate-800">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 mb-3">
                     <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
-                        AD
+                        <%= typeof user !== 'undefined' && user && user.username ? user.username.substring(0, 2).toUpperCase() : 'U' %>
                     </div>
-                    <div>
-                        <p class="text-sm font-medium text-white">Admin</p>
-                        <p class="text-xs text-slate-500">Secretary</p>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-white"><%= typeof user !== 'undefined' && user ? user.username : 'User' %></p>
+                        <p class="text-xs text-slate-500"><%= typeof user !== 'undefined' && user ? user.roleName : 'Role' %></p>
                     </div>
                 </div>
+                <a href="/auth/logout" class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
     </div>
@@ -212,18 +223,24 @@
 
             <!-- Action Bar -->
             <div class="grid grid-cols-2 gap-4">
+                <% if (typeof permissions !== 'undefined' && permissions.includes('add_collection')) { %>
                 <button id="addCollectionBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-white border border-emerald-100 text-emerald-700 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group">
                     <div class="bg-emerald-100 p-2 rounded-full group-hover:bg-emerald-200 transition-colors">
                         <i data-lucide="plus" class="w-5 h-5"></i>
                     </div>
                     <span class="font-semibold">Add Collection</span>
                 </button>
+                <% } else { %>
+                <div></div>
+                <% } %>
+                <% if (typeof permissions !== 'undefined' && permissions.includes('add_expense')) { %>
                 <button id="addExpenseBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-white border border-rose-100 text-rose-700 shadow-sm hover:shadow-md hover:border-rose-200 transition-all group">
                     <div class="bg-rose-100 p-2 rounded-full group-hover:bg-rose-200 transition-colors">
                         <i data-lucide="plus" class="w-5 h-5"></i>
                     </div>
                     <span class="font-semibold">Add Expense</span>
                 </button>
+                <% } %>
             </div>
 
             <!-- Recent Activity -->
@@ -253,10 +270,12 @@
                         <input type="text" id="monthSelectorCollections" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer w-32">
                         <button id="nextMonthCollections" class="p-1 hover:bg-slate-100 rounded">→</button>
                     </div>
+                    <% if (typeof permissions !== 'undefined' && permissions.includes('add_collection')) { %>
                     <button id="addCollectionBtn2" class="hidden sm:flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
                         <i data-lucide="plus" class="w-[18px] h-[18px]"></i>
                         <span>Add New</span>
                     </button>
+                    <% } %>
                 </div>
             </div>
 
@@ -324,10 +343,12 @@
                         <input type="text" id="monthSelectorExpenses" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer w-32">
                         <button id="nextMonthExpenses" class="p-1 hover:bg-slate-100 rounded">→</button>
                     </div>
+                    <% if (typeof permissions !== 'undefined' && permissions.includes('add_expense')) { %>
                     <button id="addExpenseBtn2" class="hidden sm:flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200">
                         <i data-lucide="plus" class="w-[18px] h-[18px]"></i>
                         <span>Add New</span>
                     </button>
+                    <% } %>
                 </div>
             </div>
 
@@ -533,12 +554,16 @@
 
     <!-- Floating Action Button (Mobile Only) -->
     <div class="md:hidden fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        <% if (typeof permissions !== 'undefined' && permissions.includes('add_expense')) { %>
         <button id="mobileAddExpenseBtn" class="w-12 h-12 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 active:scale-95 transition-all">
             <i data-lucide="receipt" class="w-5 h-5"></i>
         </button>
+        <% } %>
+        <% if (typeof permissions !== 'undefined' && permissions.includes('add_collection')) { %>
         <button id="mobileAddCollectionBtn" class="w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 active:scale-95 transition-all">
             <i data-lucide="plus" class="w-7 h-7"></i>
         </button>
+        <% } %>
     </div>
 
     <!-- Flatpickr JS -->
@@ -548,6 +573,13 @@
     <!-- Server-provided configuration (from .env) -->
     <script>
         window.SERVER_ENV_CONFIG = <%- JSON.stringify(appConfig || {}) %>;
+        // User permissions for client-side checks
+        window.USER_PERMISSIONS = <%- JSON.stringify(typeof permissions !== 'undefined' ? permissions : []) %>;
+        
+        // Helper function to check permissions in JavaScript
+        function hasPermission(permissionName) {
+            return window.USER_PERMISSIONS && window.USER_PERMISSIONS.includes(permissionName);
+        }
     </script>
     <!-- Configuration File -->
     <script src="/config/config.js"></script>
