@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <!-- html2pdf.js for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Chart.js for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         .notification {
             transition: opacity 0.3s ease-in-out;
@@ -275,6 +277,41 @@
                         <div class="p-3 rounded-xl bg-rose-50">
                             <i data-lucide="trending-down" class="w-6 h-6 text-rose-600"></i>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Monthly Trends Chart -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Monthly Trends</h3>
+                    <div class="h-64">
+                        <canvas id="monthlyTrendsChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Collections Breakdown Chart -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Collections Breakdown</h3>
+                    <div class="h-64">
+                        <canvas id="collectionsBreakdownChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Expense Categories Chart -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Expense Categories</h3>
+                    <div class="h-64">
+                        <canvas id="expenseCategoriesChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Income vs Expenses Chart -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Income vs Expenses</h3>
+                    <div class="h-64">
+                        <canvas id="incomeExpensesChart"></canvas>
                     </div>
                 </div>
             </div>
