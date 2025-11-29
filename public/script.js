@@ -2037,45 +2037,91 @@ async function displayCollectionsTable() {
         collections = await getCollectionsByMonth(collectionsMonth);
     }
     
-    collections = collections.sort((a, b) => {
-        const dateA = new Date(a.date || a.createdAt);
-        const dateB = new Date(b.date || b.createdAt);
-        return dateB - dateA;
+    // Initialize consolidatedData with all apartments from config (to always show all apartments)
+    const consolidatedData = {};
+    const allFlats = FLATS_CONFIG.FLATS || [];
+    
+    // Initialize all apartments with zero amounts
+    allFlats.forEach(flatNumber => {
+        consolidatedData[flatNumber] = {
+            flatNumber: flatNumber,
+            maintenance: 0,
+            corpus: 0
+        };
     });
     
-    if (collections.length === 0) {
-        tbody.innerHTML = '<tr><td colSpan="6" class="px-6 py-8 text-center text-slate-400">No collections found.</td></tr>';
-        return;
-    }
-    
-    // Calculate total amount
-    const totalAmount = collections.reduce((sum, c) => {
-        const amount = parseFloat(c.amount || 0);
-        return sum + (isNaN(amount) ? 0 : amount);
-    }, 0);
-    
-    // Generate table rows
-    const rowsHtml = collections.map(c => {
-        const isCorpus = c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
-                        c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+    // Process collections and update amounts
+    collections.forEach(c => {
         const flatNumber = c.flatNumber || c.category || '-';
         
+        // Initialize if flatNumber is not in the standard list (for edge cases)
+        if (!consolidatedData[flatNumber]) {
+            consolidatedData[flatNumber] = {
+                flatNumber: flatNumber,
+                maintenance: 0,
+                corpus: 0
+            };
+        }
+        
+        const isCorpus = c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                        c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+        const amount = parseFloat(c.amount || 0);
+        
+        if (isCorpus) {
+            consolidatedData[flatNumber].corpus += isNaN(amount) ? 0 : amount;
+        } else {
+            consolidatedData[flatNumber].maintenance += isNaN(amount) ? 0 : amount;
+        }
+    });
+    
+    // Convert to array and sort by flat number
+    const consolidatedArray = Object.values(consolidatedData).sort((a, b) => {
+        // Sort by flat number (e.g., 1A, 1B, 2A, 2B, etc.)
+        const flatA = a.flatNumber;
+        const flatB = b.flatNumber;
+        
+        // Extract floor number and letter
+        const matchA = flatA.match(/(\d+)([A-Z])?/);
+        const matchB = flatB.match(/(\d+)([A-Z])?/);
+        
+        if (matchA && matchB) {
+            const floorA = parseInt(matchA[1]);
+            const floorB = parseInt(matchB[1]);
+            const letterA = matchA[2] || '';
+            const letterB = matchB[2] || '';
+            
+            if (floorA !== floorB) {
+                return floorA - floorB;
+            }
+            return letterA.localeCompare(letterB);
+        }
+        
+        return flatA.localeCompare(flatB);
+    });
+    
+    // Calculate totals
+    let totalMaintenance = 0;
+    let totalCorpus = 0;
+    let grandTotal = 0;
+    
+    // Generate table rows
+    const rowsHtml = consolidatedArray.map(item => {
+        const total = item.maintenance + item.corpus;
+        totalMaintenance += item.maintenance;
+        totalCorpus += item.corpus;
+        grandTotal += total;
+        
+        // Style amounts: font-semibold for non-zero, regular weight for zero
+        const maintenanceClass = item.maintenance > 0 ? 'text-slate-700 font-semibold' : 'text-slate-400';
+        const corpusClass = item.corpus > 0 ? 'text-slate-700 font-semibold' : 'text-slate-400';
+        const totalClass = total > 0 ? 'text-slate-900 font-semibold' : 'text-slate-400';
+        
         return `
-            <tr class="hover:bg-slate-50/80 transition-colors group">
-                <td class="px-6 py-4 text-slate-600">${formatDate(c.date)}</td>
-                <td class="px-6 py-4 font-medium text-slate-900">${flatNumber}</td>
-                <td class="px-6 py-4">
-                    <span class="px-2 py-1 rounded-full text-xs font-medium ${isCorpus ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">
-                        ${isCorpus ? APP_CONFIG.COLLECTION_TYPES.CORPUS.DISPLAY : APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.DISPLAY}
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-slate-600">${c.paymentMode || '-'}</td>
-                <td class="px-6 py-4 text-right font-bold text-slate-700">${formatCurrency(parseFloat(c.amount || 0))}</td>
-                <td class="px-6 py-4 text-center">
-                    ${hasPermission('delete_collection') ? `<button onclick="handleDeleteCollection('${c.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>` : ''}
-                </td>
+            <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="px-6 py-4 font-medium text-slate-900">${item.flatNumber}</td>
+                <td class="px-6 py-4 text-right ${maintenanceClass}">${formatCurrency(item.maintenance)}</td>
+                <td class="px-6 py-4 text-right ${corpusClass}">${formatCurrency(item.corpus)}</td>
+                <td class="px-6 py-4 text-right ${totalClass}">${formatCurrency(total)}</td>
             </tr>
         `;
     }).join('');
@@ -2083,9 +2129,10 @@ async function displayCollectionsTable() {
     // Add total row at the bottom
     const totalRow = `
         <tr class="bg-slate-50 border-t-2 border-slate-200">
-            <td class="px-6 py-4 font-semibold text-slate-900" colspan="4">Total</td>
-            <td class="px-6 py-4 text-right font-bold text-lg text-slate-900">${formatCurrency(totalAmount)}</td>
-            <td class="px-6 py-4"></td>
+            <td class="px-6 py-4 font-semibold text-slate-900">Total</td>
+            <td class="px-6 py-4 text-right font-bold text-lg text-slate-900">${formatCurrency(totalMaintenance)}</td>
+            <td class="px-6 py-4 text-right font-bold text-lg text-slate-900">${formatCurrency(totalCorpus)}</td>
+            <td class="px-6 py-4 text-right font-bold text-lg text-slate-900">${formatCurrency(grandTotal)}</td>
         </tr>
     `;
     
