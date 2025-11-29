@@ -696,25 +696,21 @@ async function updateReports() {
     
     // Generate HTML for Combined Collections table
     if (flats.length === 0) {
-        combinedCollectionsTbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+        combinedCollectionsTbody.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-slate-400">No flats found.</td></tr>';
     } else {
         // Create one row per flat with Maintenance and Corpus as columns
         combinedCollectionsTbody.innerHTML = flats.map(flat => {
             const maintenanceAmount = maintenanceCollectionsData[flat] || 0;
             const corpusAmount = corpusCollectionsData[flat] || 0;
-            const totalAmount = maintenanceAmount + corpusAmount;
             
             return `
                 <tr class="hover:bg-slate-50/80 transition-colors">
-                    <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
-                    <td class="px-6 py-4 text-right font-semibold ${maintenanceAmount > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                    <td class="px-4 py-4 font-medium text-slate-900">${flat}</td>
+                    <td class="px-4 py-4 text-right font-semibold ${maintenanceAmount > 0 ? 'text-emerald-600' : 'text-slate-400'}">
                         ${formatCurrency(maintenanceAmount)}
                     </td>
-                    <td class="px-6 py-4 text-right font-semibold ${corpusAmount > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                    <td class="px-4 py-4 text-right font-semibold ${corpusAmount > 0 ? 'text-amber-600' : 'text-slate-400'}">
                         ${formatCurrency(corpusAmount)}
-                    </td>
-                    <td class="px-6 py-4 text-right font-bold ${totalAmount > 0 ? 'text-slate-900' : 'text-slate-400'}">
-                        ${formatCurrency(totalAmount)}
                     </td>
                 </tr>
             `;
@@ -724,15 +720,15 @@ async function updateReports() {
     // Generate HTML for Maintenance Expenses table
     const maintenanceCategories = Object.keys(maintenanceCategoryExpenses).sort();
     if (maintenanceCategories.length === 0) {
-        maintenanceExpensesTbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-slate-400">No expenses found.</td></tr>';
+        maintenanceExpensesTbody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-slate-400">No expenses found.</td></tr>';
     } else {
         maintenanceExpensesTbody.innerHTML = maintenanceCategories.map(category => {
             const amount = maintenanceCategoryExpenses[category];
             
             return `
                 <tr class="hover:bg-slate-50/80 transition-colors">
-                    <td class="px-6 py-4 font-medium text-slate-900">${category}</td>
-                    <td class="px-6 py-4 text-right font-semibold ${amount > 0 ? 'text-red-600' : 'text-slate-400'}">
+                    <td class="px-4 py-4 font-medium text-slate-900">${category}</td>
+                    <td class="px-4 py-4 text-right font-semibold ${amount > 0 ? 'text-red-600' : 'text-slate-400'}">
                         ${formatCurrency(amount)}
                     </td>
                 </tr>
@@ -760,14 +756,11 @@ async function updateReports() {
     }
     
     // Update totals for Combined Collections
-    const totalCombinedCollections = totalMaintenanceCollections + totalCorpusCollections;
     const totalMaintenanceCollectionsEl = document.getElementById('totalMaintenanceCollections');
     const totalCorpusCollectionsEl = document.getElementById('totalCorpusCollections');
-    const totalCombinedCollectionsEl = document.getElementById('totalCombinedCollections');
     
     if (totalMaintenanceCollectionsEl) totalMaintenanceCollectionsEl.textContent = formatCurrency(totalMaintenanceCollections);
     if (totalCorpusCollectionsEl) totalCorpusCollectionsEl.textContent = formatCurrency(totalCorpusCollections);
-    if (totalCombinedCollectionsEl) totalCombinedCollectionsEl.textContent = formatCurrency(totalCombinedCollections);
     
     // Update totals for Expenses
     const totalMaintenanceExpensesEl = document.getElementById('totalMaintenanceExpenses');
