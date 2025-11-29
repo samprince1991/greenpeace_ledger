@@ -373,7 +373,32 @@
                 <!-- Yearly Breakdown Tab Content -->
                 <div id="collectionsTabYearlyContent" class="collections-tab-content hidden">
                     <div class="p-4 border-b border-slate-200">
-                        <p class="text-sm text-slate-500">Collections per house for the last 12 months</p>
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <p class="text-sm text-slate-500">Collections per house for the selected year</p>
+                            <div class="flex items-center gap-4">
+                                <!-- Type Filter Checkboxes -->
+                                <div class="flex items-center gap-4">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="yearlyFilterMaintenance" checked class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                        <span class="text-sm font-medium text-slate-700">Maintenance</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="yearlyFilterCorpus" class="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500">
+                                        <span class="text-sm font-medium text-slate-700">Corpus</span>
+                                    </label>
+                                </div>
+                                <!-- Year Navigation -->
+                                <div class="flex items-center gap-3">
+                                    <button id="prevYearCollections" class="p-1 hover:bg-slate-100 rounded transition-colors">
+                                        <i data-lucide="chevron-left" class="w-4 h-4 text-slate-600"></i>
+                                    </button>
+                                    <span id="selectedYearDisplay" class="text-sm font-semibold text-slate-700 min-w-[80px] text-center">2025</span>
+                                    <button id="nextYearCollections" class="p-1 hover:bg-slate-100 rounded transition-colors">
+                                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full border-collapse">

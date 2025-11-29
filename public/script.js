@@ -10,6 +10,9 @@ let currentMonthFormatted = ''; // Format: MonthName-YYYY for storage
 let collectionsMonth = ''; // Format: YYYY-MM for Collections tab
 let expensesMonth = ''; // Format: YYYY-MM for Expenses tab
 let reportsMonth = ''; // Format: YYYY-MM for Reports tab
+let selectedYear = new Date().getFullYear(); // Selected year for yearly breakdown
+let showMaintenanceYearly = true; // Show maintenance in yearly breakdown
+let showCorpusYearly = false; // Show corpus in yearly breakdown
 let currentExpenses = [];
 let currentCollections = [];
 let activeTab = UI_CONFIG.TABS.DASHBOARD;
@@ -313,7 +316,17 @@ function switchCollectionsSubTab(subTabName) {
         if (yearlyBtn) {
             yearlyBtn.className = 'collections-subtab flex-1 px-6 py-4 text-sm font-semibold text-slate-700 bg-white border-b-2 border-indigo-600 transition-all relative -mb-px';
         }
+        // Initialize checkbox states
+        const maintenanceCheckbox = document.getElementById('yearlyFilterMaintenance');
+        const corpusCheckbox = document.getElementById('yearlyFilterCorpus');
+        if (maintenanceCheckbox) maintenanceCheckbox.checked = showMaintenanceYearly;
+        if (corpusCheckbox) corpusCheckbox.checked = showCorpusYearly;
+        
         updateYearlyHouseBreakdown();
+        // Initialize icons for chevron buttons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     } else if (subTabName === 'allTime') {
         const allTimeContent = document.getElementById('collectionsTabAllTimeContent');
         const allTimeBtn = document.getElementById('collectionsTabAllTime');
@@ -632,8 +645,27 @@ async function updateYearlyHouseBreakdown() {
     const headerRow = document.getElementById('yearlyTableHeader');
     const footerRow = document.getElementById('yearlyTableFooter');
     const grandTotalEl = document.getElementById('yearlyGrandTotal');
+    const yearDisplayEl = document.getElementById('selectedYearDisplay');
+    const nextYearBtn = document.getElementById('nextYearCollections');
     
     if (!tbody || !headerRow || !footerRow || !grandTotalEl) return;
+    
+    // Update year display
+    if (yearDisplayEl) {
+        yearDisplayEl.textContent = selectedYear;
+    }
+    
+    // Disable/enable next year button based on current year
+    const currentYear = new Date().getFullYear();
+    if (nextYearBtn) {
+        if (selectedYear >= currentYear) {
+            nextYearBtn.disabled = true;
+            nextYearBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            nextYearBtn.disabled = false;
+            nextYearBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
     
     // Get all collections
     const allCollections = await getAllCollections();
@@ -641,17 +673,14 @@ async function updateYearlyHouseBreakdown() {
     // Get flats from config
     const flats = FLATS_CONFIG.FLATS;
     
-    // Generate last 12 months (most recent first)
+    // Generate all 12 months of the selected year (January to December)
     const months = [];
-    const now = new Date();
     for (let i = 0; i < 12; i++) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        const monthName = APP_CONFIG.MONTH_NAMES[date.getMonth()].substring(0, 3);
-        const year = date.getFullYear();
+        const monthKey = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
+        const monthName = APP_CONFIG.MONTH_NAMES[i].substring(0, 3);
         months.push({
             key: monthKey,
-            label: `${monthName} ${year}`
+            label: `${monthName} ${selectedYear}`
         });
     }
     
@@ -678,7 +707,28 @@ async function updateYearlyHouseBreakdown() {
         const flatCollections = allCollections.filter(c => (c.flatNumber || c.category) === flat);
         const monthlyAmounts = months.map((month, index) => {
             const monthCollections = flatCollections.filter(c => c.month === month.key);
-            const total = monthCollections.reduce((sum, c) => {
+            
+            // Filter by type based on checkboxes
+            let filteredCollections = monthCollections;
+            if (!showMaintenanceYearly && !showCorpusYearly) {
+                // If both are unchecked, show nothing
+                filteredCollections = [];
+            } else if (!showMaintenanceYearly) {
+                // Show only corpus
+                filteredCollections = monthCollections.filter(c => 
+                    c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                    c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE
+                );
+            } else if (!showCorpusYearly) {
+                // Show only maintenance
+                filteredCollections = monthCollections.filter(c => 
+                    c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                    c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE
+                );
+            }
+            // If both are checked, show all (no filter needed)
+            
+            const total = filteredCollections.reduce((sum, c) => {
                 const amount = parseFloat(c.amount || 0);
                 return sum + (isNaN(amount) ? 0 : amount);
             }, 0);
@@ -2585,6 +2635,35 @@ function setupEventListeners() {
     document.getElementById('collectionsTabMonthly')?.addEventListener('click', () => switchCollectionsSubTab('monthly'));
     document.getElementById('collectionsTabYearly')?.addEventListener('click', () => switchCollectionsSubTab('yearly'));
     document.getElementById('collectionsTabAllTime')?.addEventListener('click', () => switchCollectionsSubTab('allTime'));
+    
+    // Year navigation for yearly breakdown
+    document.getElementById('prevYearCollections')?.addEventListener('click', () => {
+        selectedYear--;
+        updateYearlyHouseBreakdown();
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
+    document.getElementById('nextYearCollections')?.addEventListener('click', () => {
+        const currentYear = new Date().getFullYear();
+        if (selectedYear < currentYear) {
+            selectedYear++;
+            updateYearlyHouseBreakdown();
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+    });
+    
+    // Type filter checkboxes for yearly breakdown
+    document.getElementById('yearlyFilterMaintenance')?.addEventListener('change', (e) => {
+        showMaintenanceYearly = e.target.checked;
+        updateYearlyHouseBreakdown();
+    });
+    document.getElementById('yearlyFilterCorpus')?.addEventListener('change', (e) => {
+        showCorpusYearly = e.target.checked;
+        updateYearlyHouseBreakdown();
+    });
     
     // Month navigation (Expenses)
     document.getElementById('prevMonthExpenses')?.addEventListener('click', () => changeExpensesMonth('prev'));
