@@ -10,6 +10,8 @@ let currentMonthFormatted = ''; // Format: MonthName-YYYY for storage
 let collectionsMonth = ''; // Format: YYYY-MM for Collections tab
 let expensesMonth = ''; // Format: YYYY-MM for Expenses tab
 let reportsMonth = ''; // Format: YYYY-MM for Reports tab
+let activityMonth = ''; // Format: YYYY-MM for Activity tab
+let activityType = 'all'; // 'all', 'collection', or 'expense' for Activity tab
 let selectedYear = new Date().getFullYear(); // Selected year for yearly breakdown
 let showMaintenanceYearly = true; // Show maintenance in yearly breakdown
 let showCorpusYearly = false; // Show corpus in yearly breakdown
@@ -416,6 +418,12 @@ function switchTab(tabName) {
         }
         updateReports();
     } else if (tabName === UI_CONFIG.TABS.ACTIVITY) {
+        if (!activityMonth) {
+            activityMonth = defaultMonth;
+            if (activityMonthPicker) {
+                activityMonthPicker.setDate(now, true);
+            }
+        }
         displayAllActivities();
     }
 }
@@ -1971,21 +1979,36 @@ async function displayAllActivities() {
     const tbody = document.getElementById('allActivitiesTableBody');
     if (!tbody) return;
     
-    const allExpenses = await getAllExpenses();
-    const allCollections = await getAllCollections();
+    // Get expenses and collections, filtered by month if specified
+    let allExpenses = await getAllExpenses();
+    let allCollections = await getAllCollections();
+    
+    // Filter by month if a month is selected (empty string means show all)
+    if (activityMonth && activityMonth !== '') {
+        allExpenses = await getExpensesByMonth(activityMonth);
+        allCollections = await getCollectionsByMonth(activityMonth);
+    }
     
     // Combine and sort by date (newest first)
-    const allTransactions = [
+    let allTransactions = [
         ...allExpenses.map(e => ({ ...e, transactionType: 'expense' })),
         ...allCollections.map(c => ({ ...c, transactionType: 'collection' }))
-    ].sort((a, b) => {
+    ];
+    
+    // Filter by transaction type if specified
+    if (activityType && activityType !== 'all') {
+        allTransactions = allTransactions.filter(t => t.transactionType === activityType);
+    }
+    
+    // Sort by date (newest first)
+    allTransactions.sort((a, b) => {
         const dateA = new Date(a.createdAt || a.date);
         const dateB = new Date(b.createdAt || b.date);
         return dateB - dateA;
     });
     
     if (allTransactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">No transactions recorded yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">No transactions found matching the selected filters.</td></tr>';
         return;
     }
     
@@ -2444,6 +2467,38 @@ function changeExpensesMonth(direction) {
     }
 }
 
+function changeActivityMonth(direction) {
+    if (activityMonthPicker) {
+        const currentDate = activityMonthPicker.selectedDates[0] || new Date();
+        const newDate = new Date(currentDate);
+        
+        if (direction === 'prev') {
+            newDate.setMonth(newDate.getMonth() - 1);
+        } else {
+            newDate.setMonth(newDate.getMonth() + 1);
+        }
+        
+        activityMonthPicker.setDate(newDate, true);
+    } else {
+        // Fallback if Flatpickr not initialized
+        const now = new Date();
+        if (!activityMonth) {
+            activityMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+        const [year, month] = activityMonth.split('-').map(Number);
+        const date = new Date(year, month - 1, 1);
+        
+        if (direction === 'prev') {
+            date.setMonth(date.getMonth() - 1);
+        } else {
+            date.setMonth(date.getMonth() + 1);
+        }
+        
+        activityMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        displayAllActivities();
+    }
+}
+
 function changeReportsMonth(direction) {
     if (reportsMonthPicker) {
         const currentDate = reportsMonthPicker.selectedDates[0] || new Date();
@@ -2483,6 +2538,7 @@ function changeReportsMonth(direction) {
 let collectionsMonthPicker = null;
 let expensesMonthPicker = null;
 let reportsMonthPicker = null;
+let activityMonthPicker = null;
 let collectionDatePicker = null;
 let expenseDatePicker = null;
 
@@ -2587,6 +2643,30 @@ function initializeFlatpickr() {
             }
         });
         reportsMonthInput.value = reportsMonthPicker.input.value;
+    }
+    
+    // Initialize Activity month selector
+    const activityMonthInput = document.getElementById('monthSelectorActivity');
+    if (activityMonthInput && typeof monthSelectPlugin !== 'undefined') {
+        const now = new Date();
+        activityMonthPicker = flatpickr(activityMonthInput, {
+            plugins: [new monthSelectPlugin({
+                shorthand: false,
+                dateFormat: "F Y",
+                altFormat: "F Y"
+            })],
+            dateFormat: "Y-m",
+            defaultDate: now,
+            onChange: async function(selectedDates, dateStr, instance) {
+                if (selectedDates.length > 0) {
+                    const date = selectedDates[0];
+                    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    activityMonth = month;
+                    await displayAllActivities();
+                }
+            }
+        });
+        activityMonthInput.value = activityMonthPicker.input.value;
     }
 }
 
@@ -2715,6 +2795,16 @@ function setupEventListeners() {
     // Month navigation (Expenses)
     document.getElementById('prevMonthExpenses')?.addEventListener('click', () => changeExpensesMonth('prev'));
     document.getElementById('nextMonthExpenses')?.addEventListener('click', () => changeExpensesMonth('next'));
+    
+    // Activity month navigation
+    document.getElementById('prevMonthActivity')?.addEventListener('click', () => changeActivityMonth('prev'));
+    document.getElementById('nextMonthActivity')?.addEventListener('click', () => changeActivityMonth('next'));
+    
+    // Activity type filter
+    document.getElementById('activityTypeFilter')?.addEventListener('change', async function() {
+        activityType = this.value;
+        await displayAllActivities();
+    });
     
     // Month navigation (Reports)
     document.getElementById('prevMonthReports')?.addEventListener('click', () => changeReportsMonth('prev'));
