@@ -76,7 +76,8 @@ const UI_CONFIG = {
         DASHBOARD: 'dashboard',
         COLLECTIONS: 'collections',
         EXPENSES: 'expenses',
-        REPORTS: 'reports'
+        REPORTS: 'reports',
+        ACTIVITY: 'activity'
     }
 };
 

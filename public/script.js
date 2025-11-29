@@ -350,6 +350,8 @@ function switchTab(tabName) {
             }
         }
         updateReports();
+    } else if (tabName === UI_CONFIG.TABS.ACTIVITY) {
+        displayAllActivities();
     }
 }
 
@@ -852,6 +854,67 @@ async function updateRecentActivity() {
                     ${isCorpus ? '<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Corpus</span>' : ''}
                 </div>
             </div>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+async function displayAllActivities() {
+    const tbody = document.getElementById('allActivitiesTableBody');
+    if (!tbody) return;
+    
+    const allExpenses = await getAllExpenses();
+    const allCollections = await getAllCollections();
+    
+    // Combine and sort by date (newest first)
+    const allTransactions = [
+        ...allExpenses.map(e => ({ ...e, transactionType: 'expense' })),
+        ...allCollections.map(c => ({ ...c, transactionType: 'collection' }))
+    ].sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.date);
+        const dateB = new Date(b.createdAt || b.date);
+        return dateB - dateA;
+    });
+    
+    if (allTransactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">No transactions recorded yet.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = allTransactions.map(t => {
+        const isCollection = t.transactionType === 'collection';
+        const isCorpus = t.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                        t.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+        const amount = parseFloat(t.amount || 0);
+        const flatOrCategory = t.flatNumber || t.category || '-';
+        const description = t.description || '-';
+        const paymentMode = t.paymentMode || '-';
+        const date = formatDate(t.date || t.createdAt);
+        
+        return `
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-2">
+                        <div class="p-1.5 rounded-full ${isCollection ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}">
+                            <i data-lucide="${isCollection ? 'trending-up' : 'trending-down'}" class="w-4 h-4"></i>
+                        </div>
+                        <span class="text-sm font-medium text-slate-900">${isCollection ? 'Collection' : 'Expense'}</span>
+                        ${isCorpus ? '<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Corpus</span>' : ''}
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-700">${date}</td>
+                <td class="px-6 py-4 text-sm font-medium text-slate-900">${flatOrCategory}</td>
+                <td class="px-6 py-4 text-sm text-slate-600">${description}</td>
+                <td class="px-6 py-4 text-sm text-slate-600">${paymentMode}</td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm font-bold ${isCollection ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${isCollection ? '+' : '-'} ${formatCurrency(amount)}
+                    </span>
+                </td>
+            </tr>
         `;
     }).join('');
     
@@ -1464,6 +1527,17 @@ function setupEventListeners() {
             const tab = this.getAttribute('data-tab');
             if (tab) switchTab(tab);
         });
+    });
+    
+    // Tab switching for buttons with data-tab attribute (like "View All" in dashboard)
+    document.querySelectorAll('button[data-tab]').forEach(btn => {
+        // Skip if already handled by nav-tab listener
+        if (!btn.classList.contains('nav-tab') && !btn.classList.contains('mobile-nav-tab')) {
+            btn.addEventListener('click', function() {
+                const tab = this.getAttribute('data-tab');
+                if (tab) switchTab(tab);
+            });
+        }
     });
     
     // Modal buttons
