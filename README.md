@@ -142,9 +142,7 @@ ApartmentMaintanance/
 ├── views/
 │   └── index.ejs         # Main HTML template
 ├── config/
-│   ├── app-config.js     # Application configuration
-│   ├── ui-config.js      # UI configuration
-│   └── flats-config.js   # Flats configuration
+│   └── config.js         # Combined application, UI, and flats configuration
 ├── database-schema.sql    # Database schema
 ├── package.json          # Dependencies
 └── README.md             # This file

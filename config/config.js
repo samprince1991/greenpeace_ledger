@@ -45,3 +45,38 @@ const APP_CONFIG = {
     }
 };
 
+// Flats Configuration
+const FLATS_CONFIG = {
+    // List of all flat numbers
+    FLATS: ['1A', '2A', '3A', '4A', '1B', '2B', '3B', '4B'],
+    
+    // Total number of flats (can be derived from FLATS.length, but kept for convenience)
+    TOTAL: 8
+};
+
+// UI Configuration
+const UI_CONFIG = {
+    // Notification Settings
+    NOTIFICATION: {
+        TIMEOUT: 3000, // milliseconds
+        TYPES: {
+            SUCCESS: 'success',
+            ERROR: 'error'
+        }
+    },
+    
+    // Display Limits
+    DISPLAY_LIMITS: {
+        RECENT_ACTIVITY: 5, // Number of recent transactions to show
+        MAX_DESCRIPTION_LENGTH: 200 // Max width for description column
+    },
+    
+    // Tab Names
+    TABS: {
+        DASHBOARD: 'dashboard',
+        COLLECTIONS: 'collections',
+        EXPENSES: 'expenses',
+        REPORTS: 'reports'
+    }
+};
+
