@@ -618,34 +618,31 @@ async function updateHousesSummary() {
 }
 
 async function updateReports() {
-    const totalTbody = document.getElementById('totalReportsTableBody');
-    const monthlyTbody = document.getElementById('monthlyReportsTableBody');
+    const maintenanceCollectionsTbody = document.getElementById('maintenanceCollectionsTableBody');
+    const corpusCollectionsTbody = document.getElementById('corpusCollectionsTableBody');
+    const maintenanceExpensesTbody = document.getElementById('maintenanceExpensesTableBody');
+    const corpusExpensesTbody = document.getElementById('corpusExpensesTableBody');
     
-    if (!totalTbody || !monthlyTbody) return;
+    if (!maintenanceCollectionsTbody || !corpusCollectionsTbody || !maintenanceExpensesTbody || !corpusExpensesTbody) return;
     
-    // Get all collections (all-time data)
-    const allCollections = await getAllCollections();
-    
-    // Get collections for selected month
+    // Get collections and expenses for selected month
     const monthKey = reportsMonth || currentMonth;
     const monthCollections = monthKey ? await getCollectionsByMonth(monthKey) : [];
+    const monthExpenses = monthKey ? await getExpensesByMonth(monthKey) : [];
     
     // Get flats from config
     const flats = FLATS_CONFIG.FLATS;
     
-    // Calculate maintenance and corpus separately per flat (all-time and monthly)
-    const flatDataAllTime = {};
-    const flatDataMonthly = {};
-    let totalMaintenanceAllTime = 0;
-    let totalCorpusAllTime = 0;
-    let totalMaintenanceThisMonth = 0;
-    let totalCorpusThisMonth = 0;
+    // Calculate collections per flat (separated by maintenance and corpus)
+    const maintenanceCollectionsData = {};
+    const corpusCollectionsData = {};
+    let totalMaintenanceCollections = 0;
+    let totalCorpusCollections = 0;
     
     flats.forEach(flat => {
-        // All-time collections
-        const flatCollectionsAllTime = allCollections.filter(c => (c.flatNumber || c.category) === flat);
+        const flatCollections = monthCollections.filter(c => (c.flatNumber || c.category) === flat);
         
-        const maintenanceAllTime = flatCollectionsAllTime
+        const maintenance = flatCollections
             .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
                         c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
             .reduce((sum, c) => {
@@ -653,7 +650,7 @@ async function updateReports() {
                 return sum + (isNaN(amount) ? 0 : amount);
             }, 0);
         
-        const corpusAllTime = flatCollectionsAllTime
+        const corpus = flatCollections
             .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
                         c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
             .reduce((sum, c) => {
@@ -661,96 +658,154 @@ async function updateReports() {
                 return sum + (isNaN(amount) ? 0 : amount);
             }, 0);
         
-        // This month collections
-        const flatCollectionsThisMonth = monthCollections.filter(c => (c.flatNumber || c.category) === flat);
-        
-        const maintenanceThisMonth = flatCollectionsThisMonth
-            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
-                        c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
-            .reduce((sum, c) => {
-                const amount = parseFloat(c.amount || 0);
-                return sum + (isNaN(amount) ? 0 : amount);
-            }, 0);
-        
-        const corpusThisMonth = flatCollectionsThisMonth
-            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
-                        c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
-            .reduce((sum, c) => {
-                const amount = parseFloat(c.amount || 0);
-                return sum + (isNaN(amount) ? 0 : amount);
-            }, 0);
-        
-        flatDataAllTime[flat] = {
-            maintenance: maintenanceAllTime,
-            corpus: corpusAllTime,
-            total: maintenanceAllTime + corpusAllTime
-        };
-        
-        flatDataMonthly[flat] = {
-            maintenance: maintenanceThisMonth,
-            corpus: corpusThisMonth,
-            total: maintenanceThisMonth + corpusThisMonth
-        };
-        
-        totalMaintenanceAllTime += maintenanceAllTime;
-        totalCorpusAllTime += corpusAllTime;
-        totalMaintenanceThisMonth += maintenanceThisMonth;
-        totalCorpusThisMonth += corpusThisMonth;
+        maintenanceCollectionsData[flat] = maintenance;
+        corpusCollectionsData[flat] = corpus;
+        totalMaintenanceCollections += maintenance;
+        totalCorpusCollections += corpus;
     });
     
-    // Generate HTML for Total Report table
+    // Calculate expenses by category (separated by maintenance and corpus)
+    const maintenanceCategoryExpenses = {};
+    const corpusCategoryExpenses = {};
+    let totalMaintenanceExpenses = 0;
+    let totalCorpusExpenses = 0;
+    
+    monthExpenses.forEach(expense => {
+        const category = expense.category || 'Uncategorized';
+        const amount = parseFloat(expense.amount || 0);
+        if (isNaN(amount)) return;
+        
+        const isCorpus = expense.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                        expense.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                        expense.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+        
+        if (isCorpus) {
+            if (!corpusCategoryExpenses[category]) {
+                corpusCategoryExpenses[category] = 0;
+            }
+            corpusCategoryExpenses[category] += amount;
+            totalCorpusExpenses += amount;
+        } else {
+            if (!maintenanceCategoryExpenses[category]) {
+                maintenanceCategoryExpenses[category] = 0;
+            }
+            maintenanceCategoryExpenses[category] += amount;
+            totalMaintenanceExpenses += amount;
+        }
+    });
+    
+    // Generate HTML for Maintenance Collections table
     if (flats.length === 0) {
-        totalTbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
-        monthlyTbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
-        return;
+        maintenanceCollectionsTbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+    } else {
+        maintenanceCollectionsTbody.innerHTML = flats.map(flat => {
+            const amount = maintenanceCollectionsData[flat] || 0;
+            
+            return `
+                <tr class="hover:bg-slate-50/80 transition-colors">
+                    <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
+                    <td class="px-6 py-4 text-right font-semibold ${amount > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                        ${formatCurrency(amount)}
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
     
-    totalTbody.innerHTML = flats.map(flat => {
-        const data = flatDataAllTime[flat];
+    // Generate HTML for Corpus Collections table
+    if (flats.length === 0) {
+        corpusCollectionsTbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+    } else {
+        corpusCollectionsTbody.innerHTML = flats.map(flat => {
+            const amount = corpusCollectionsData[flat] || 0;
+            
+            return `
+                <tr class="hover:bg-slate-50/80 transition-colors">
+                    <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
+                    <td class="px-6 py-4 text-right font-semibold ${amount > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                        ${formatCurrency(amount)}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // Generate HTML for Maintenance Expenses table
+    const maintenanceCategories = Object.keys(maintenanceCategoryExpenses).sort();
+    if (maintenanceCategories.length === 0) {
+        maintenanceExpensesTbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-slate-400">No expenses found.</td></tr>';
+    } else {
+        maintenanceExpensesTbody.innerHTML = maintenanceCategories.map(category => {
+            const amount = maintenanceCategoryExpenses[category];
+            
+            return `
+                <tr class="hover:bg-slate-50/80 transition-colors">
+                    <td class="px-6 py-4 font-medium text-slate-900">${category}</td>
+                    <td class="px-6 py-4 text-right font-semibold ${amount > 0 ? 'text-red-600' : 'text-slate-400'}">
+                        ${formatCurrency(amount)}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // Generate HTML for Corpus Expenses table
+    const corpusCategories = Object.keys(corpusCategoryExpenses).sort();
+    if (corpusCategories.length === 0) {
+        corpusExpensesTbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-slate-400">No expenses found.</td></tr>';
+    } else {
+        corpusExpensesTbody.innerHTML = corpusCategories.map(category => {
+            const amount = corpusCategoryExpenses[category];
+            
+            return `
+                <tr class="hover:bg-slate-50/80 transition-colors">
+                    <td class="px-6 py-4 font-medium text-slate-900">${category}</td>
+                    <td class="px-6 py-4 text-right font-semibold ${amount > 0 ? 'text-red-600' : 'text-slate-400'}">
+                        ${formatCurrency(amount)}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // Update totals for Collections
+    const totalMaintenanceCollectionsEl = document.getElementById('totalMaintenanceCollections');
+    const totalCorpusCollectionsEl = document.getElementById('totalCorpusCollections');
+    
+    if (totalMaintenanceCollectionsEl) totalMaintenanceCollectionsEl.textContent = formatCurrency(totalMaintenanceCollections);
+    if (totalCorpusCollectionsEl) totalCorpusCollectionsEl.textContent = formatCurrency(totalCorpusCollections);
+    
+    // Update totals for Expenses
+    const totalMaintenanceExpensesEl = document.getElementById('totalMaintenanceExpenses');
+    const totalCorpusExpensesEl = document.getElementById('totalCorpusExpenses');
+    
+    if (totalMaintenanceExpensesEl) totalMaintenanceExpensesEl.textContent = formatCurrency(totalMaintenanceExpenses);
+    if (totalCorpusExpensesEl) totalCorpusExpensesEl.textContent = formatCurrency(totalCorpusExpenses);
+    
+    // Calculate and update balance (Maintenance only)
+    const balance = totalMaintenanceCollections - totalMaintenanceExpenses;
+    
+    const totalMaintenanceCollectionsAmountEl = document.getElementById('totalMaintenanceCollectionsAmount');
+    const totalMaintenanceExpensesAmountEl = document.getElementById('totalMaintenanceExpensesAmount');
+    const balanceAmountEl = document.getElementById('balanceAmount');
+    const balanceCardEl = balanceAmountEl ? balanceAmountEl.closest('.bg-indigo-50') : null;
+    
+    if (totalMaintenanceCollectionsAmountEl) totalMaintenanceCollectionsAmountEl.textContent = formatCurrency(totalMaintenanceCollections);
+    if (totalMaintenanceExpensesAmountEl) totalMaintenanceExpensesAmountEl.textContent = formatCurrency(totalMaintenanceExpenses);
+    if (balanceAmountEl) {
+        balanceAmountEl.textContent = formatCurrency(balance);
+        // Update color based on balance
+        balanceAmountEl.className = `text-2xl font-bold ${balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
         
-        return `
-            <tr class="hover:bg-slate-50/80 transition-colors">
-                <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
-                <td class="px-6 py-4 text-right font-semibold ${data.maintenance > 0 ? 'text-emerald-600' : 'text-slate-400'}">
-                    ${formatCurrency(data.maintenance)}
-                </td>
-                <td class="px-6 py-4 text-right font-semibold ${data.corpus > 0 ? 'text-amber-600' : 'text-slate-400'}">
-                    ${formatCurrency(data.corpus)}
-                </td>
-            </tr>
-        `;
-    }).join('');
-    
-    // Generate HTML for Monthly Report table
-    monthlyTbody.innerHTML = flats.map(flat => {
-        const data = flatDataMonthly[flat];
-        
-        return `
-            <tr class="hover:bg-slate-50/80 transition-colors">
-                <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
-                <td class="px-6 py-4 text-right font-semibold ${data.maintenance > 0 ? 'text-emerald-600' : 'text-slate-400'}">
-                    ${formatCurrency(data.maintenance)}
-                </td>
-                <td class="px-6 py-4 text-right font-semibold ${data.corpus > 0 ? 'text-amber-600' : 'text-slate-400'}">
-                    ${formatCurrency(data.corpus)}
-                </td>
-            </tr>
-        `;
-    }).join('');
-    
-    // Update totals for Total Report
-    const totalMaintenanceAllTimeEl = document.getElementById('totalMaintenanceAllTime');
-    const totalCorpusAllTimeEl = document.getElementById('totalCorpusAllTime');
-    
-    if (totalMaintenanceAllTimeEl) totalMaintenanceAllTimeEl.textContent = formatCurrency(totalMaintenanceAllTime);
-    if (totalCorpusAllTimeEl) totalCorpusAllTimeEl.textContent = formatCurrency(totalCorpusAllTime);
-    
-    // Update totals for Monthly Report
-    const totalMaintenanceThisMonthEl = document.getElementById('totalMaintenanceThisMonth');
-    const totalCorpusThisMonthEl = document.getElementById('totalCorpusThisMonth');
-    
-    if (totalMaintenanceThisMonthEl) totalMaintenanceThisMonthEl.textContent = formatCurrency(totalMaintenanceThisMonth);
-    if (totalCorpusThisMonthEl) totalCorpusThisMonthEl.textContent = formatCurrency(totalCorpusThisMonth);
+        // Update balance card background color
+        if (balanceCardEl) {
+            balanceCardEl.className = `rounded-lg p-4 ${balance >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`;
+            const balanceLabel = balanceCardEl.querySelector('p.text-indigo-600');
+            if (balanceLabel) {
+                balanceLabel.className = `text-sm mb-1 ${balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+            }
+        }
+    }
 }
 
 async function updateRecentActivity() {

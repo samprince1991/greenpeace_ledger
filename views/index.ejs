@@ -226,7 +226,7 @@
                         <div>
                             <p class="text-sm font-medium text-slate-500 mb-1">Total Expenses</p>
                             <h3 class="text-2xl font-bold text-slate-900" id="totalExpenses">₹0</h3>
-                            <p class="text-xs text-slate-400 mt-1">Utilities & Services</p>
+                            <p class="text-xs text-slate-400 mt-1">Utilities & Services this Month</p>
                         </div>
                         <div class="p-3 rounded-xl bg-rose-50">
                             <i data-lucide="trending-down" class="w-6 h-6 text-rose-600"></i>
@@ -392,36 +392,45 @@
 
         <!-- Reports View -->
         <div id="reportsView" class="space-y-6 view-hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Total Report Section -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <div class="flex flex-col justify-between items-start gap-4 mb-4">
-                        <div>
-                            <h2 class="text-2xl font-bold text-slate-900">Total Report</h2>
-                            <p class="text-slate-500 mt-1">All-time Corpus and Maintenance Collected per House</p>
-                        </div>
+                    <h2 class="text-2xl font-bold text-slate-900">Monthly Report</h2>
+                    <p class="text-slate-500 mt-1">Collections, Expenses, and Balance for Selected Month</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                        <button id="prevMonthReports" class="p-1 hover:bg-slate-100 rounded">←</button>
+                        <input type="text" id="monthSelectorReports" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer w-32">
+                        <button id="nextMonthReports" class="p-1 hover:bg-slate-100 rounded">→</button>
                     </div>
+                </div>
+            </div>
 
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Maintenance Collections Section -->
+                <div>
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-slate-900">Maintenance Collections</h3>
+                        <p class="text-sm text-slate-500">Monthly Maintenance Collections per House</p>
+                    </div>
                     <div class="bg-white rounded-2xl shadow-lg p-6">
                         <div class="overflow-x-auto">
                             <table class="w-full border-collapse">
                                 <thead>
                                     <tr class="bg-slate-50 border-b border-slate-200">
                                         <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">House/Flat</th>
-                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Maintenance</th>
-                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Corpus</th>
+                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Amount</th>
                                     </tr>
                                 </thead>
-                                <tbody id="totalReportsTableBody" class="bg-white divide-y divide-slate-200">
+                                <tbody id="maintenanceCollectionsTableBody" class="bg-white divide-y divide-slate-200">
                                     <tr>
-                                        <td colspan="3" class="px-6 py-8 text-center text-slate-400">Loading reports...</td>
+                                        <td colspan="2" class="px-6 py-8 text-center text-slate-400">Loading reports...</td>
                                     </tr>
                                 </tbody>
                                 <tfoot class="bg-slate-50">
                                     <tr class="font-semibold">
                                         <td class="px-6 py-4 text-left text-slate-900">Total</td>
-                                        <td id="totalMaintenanceAllTime" class="px-6 py-4 text-right text-slate-900">₹0</td>
-                                        <td id="totalCorpusAllTime" class="px-6 py-4 text-right text-slate-900">₹0</td>
+                                        <td id="totalMaintenanceCollections" class="px-6 py-4 text-right text-slate-900">₹0</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -429,46 +438,117 @@
                     </div>
                 </div>
 
-                <!-- Monthly Report Section -->
+                <!-- Corpus Collections Section -->
                 <div>
-                    <div class="flex flex-col justify-between items-start gap-4 mb-4">
-                        <div>
-                            <h2 class="text-2xl font-bold text-slate-900">Monthly Report</h2>
-                            <p class="text-slate-500 mt-1">Monthly Corpus and Maintenance Collected per House</p>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
-                                <button id="prevMonthReports" class="p-1 hover:bg-slate-100 rounded">←</button>
-                                <input type="text" id="monthSelectorReports" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer w-32">
-                                <button id="nextMonthReports" class="p-1 hover:bg-slate-100 rounded">→</button>
-                            </div>
-                        </div>
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-slate-900">Corpus Collections</h3>
+                        <p class="text-sm text-slate-500">Monthly Corpus Collections per House</p>
                     </div>
-
                     <div class="bg-white rounded-2xl shadow-lg p-6">
                         <div class="overflow-x-auto">
                             <table class="w-full border-collapse">
                                 <thead>
                                     <tr class="bg-slate-50 border-b border-slate-200">
                                         <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">House/Flat</th>
-                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Maintenance</th>
-                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Corpus</th>
+                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Amount</th>
                                     </tr>
                                 </thead>
-                                <tbody id="monthlyReportsTableBody" class="bg-white divide-y divide-slate-200">
+                                <tbody id="corpusCollectionsTableBody" class="bg-white divide-y divide-slate-200">
                                     <tr>
-                                        <td colspan="3" class="px-6 py-8 text-center text-slate-400">Loading reports...</td>
+                                        <td colspan="2" class="px-6 py-8 text-center text-slate-400">Loading reports...</td>
                                     </tr>
                                 </tbody>
                                 <tfoot class="bg-slate-50">
                                     <tr class="font-semibold">
                                         <td class="px-6 py-4 text-left text-slate-900">Total</td>
-                                        <td id="totalMaintenanceThisMonth" class="px-6 py-4 text-right text-slate-900">₹0</td>
-                                        <td id="totalCorpusThisMonth" class="px-6 py-4 text-right text-slate-900">₹0</td>
+                                        <td id="totalCorpusCollections" class="px-6 py-4 text-right text-slate-900">₹0</td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Maintenance Expenses Section -->
+                <div>
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-slate-900">Maintenance Expenses</h3>
+                        <p class="text-sm text-slate-500">Monthly Maintenance Expenses by Category</p>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200">
+                                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Category</th>
+                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="maintenanceExpensesTableBody" class="bg-white divide-y divide-slate-200">
+                                    <tr>
+                                        <td colspan="2" class="px-6 py-8 text-center text-slate-400">Loading reports...</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="bg-slate-50">
+                                    <tr class="font-semibold">
+                                        <td class="px-6 py-4 text-left text-slate-900">Total</td>
+                                        <td id="totalMaintenanceExpenses" class="px-6 py-4 text-right text-slate-900">₹0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Corpus Expenses Section -->
+                <div>
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-slate-900">Corpus Expenses</h3>
+                        <p class="text-sm text-slate-500">Monthly Corpus Expenses by Category</p>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200">
+                                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Category</th>
+                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpusExpensesTableBody" class="bg-white divide-y divide-slate-200">
+                                    <tr>
+                                        <td colspan="2" class="px-6 py-8 text-center text-slate-400">Loading reports...</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="bg-slate-50">
+                                    <tr class="font-semibold">
+                                        <td class="px-6 py-4 text-left text-slate-900">Total</td>
+                                        <td id="totalCorpusExpenses" class="px-6 py-4 text-right text-slate-900">₹0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Balance Summary (Maintenance Only) -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-slate-900 mb-4">Maintenance Balance Summary</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <p class="text-sm text-slate-600 mb-1">Maintenance Collections</p>
+                        <p id="totalMaintenanceCollectionsAmount" class="text-2xl font-bold text-slate-900">₹0</p>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <p class="text-sm text-slate-600 mb-1">Maintenance Expenses</p>
+                        <p id="totalMaintenanceExpensesAmount" class="text-2xl font-bold text-red-600">₹0</p>
+                    </div>
+                    <div class="bg-indigo-50 rounded-lg p-4">
+                        <p class="text-sm text-indigo-600 mb-1">Balance</p>
+                        <p id="balanceAmount" class="text-2xl font-bold text-indigo-900">₹0</p>
                     </div>
                 </div>
             </div>
