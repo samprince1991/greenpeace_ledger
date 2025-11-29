@@ -286,6 +286,37 @@ function showNotification(message, type = 'success') {
 // Tab Management
 // ============================================
 
+function switchCollectionsSubTab(subTabName) {
+    // Hide all sub-tab contents
+    document.querySelectorAll('.collections-tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    // Update sub-tab button styles
+    document.querySelectorAll('.collections-subtab').forEach(btn => {
+        btn.className = 'collections-subtab flex-1 px-6 py-4 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all';
+    });
+    
+    // Show selected sub-tab content
+    if (subTabName === 'monthly') {
+        const monthlyContent = document.getElementById('collectionsTabMonthlyContent');
+        const monthlyBtn = document.getElementById('collectionsTabMonthly');
+        if (monthlyContent) monthlyContent.classList.remove('hidden');
+        if (monthlyBtn) {
+            monthlyBtn.className = 'collections-subtab flex-1 px-6 py-4 text-sm font-semibold text-slate-700 bg-white border-b-2 border-indigo-600 transition-all relative -mb-px';
+        }
+        // Month filter is already inside the monthly tab content, so it will show automatically
+    } else if (subTabName === 'allTime') {
+        const allTimeContent = document.getElementById('collectionsTabAllTimeContent');
+        const allTimeBtn = document.getElementById('collectionsTabAllTime');
+        if (allTimeContent) allTimeContent.classList.remove('hidden');
+        if (allTimeBtn) {
+            allTimeBtn.className = 'collections-subtab flex-1 px-6 py-4 text-sm font-semibold text-slate-700 bg-white border-b-2 border-indigo-600 transition-all relative -mb-px';
+        }
+        // Month filter is hidden automatically when monthly tab content is hidden
+    }
+}
+
 function switchTab(tabName) {
     activeTab = tabName;
     
@@ -344,6 +375,8 @@ function switchTab(tabName) {
         }
         displayCollectionsTable();
         updateAllTimeHouseTotals();
+        // Default to monthly tab and show month filter
+        switchCollectionsSubTab('monthly');
     } else if (tabName === UI_CONFIG.TABS.EXPENSES) {
         if (!expensesMonth) {
             expensesMonth = defaultMonth;
@@ -2424,6 +2457,10 @@ function setupEventListeners() {
     // Month navigation (Collections)
     document.getElementById('prevMonthCollections')?.addEventListener('click', () => changeCollectionsMonth('prev'));
     document.getElementById('nextMonthCollections')?.addEventListener('click', () => changeCollectionsMonth('next'));
+    
+    // Collections sub-tab switching
+    document.getElementById('collectionsTabMonthly')?.addEventListener('click', () => switchCollectionsSubTab('monthly'));
+    document.getElementById('collectionsTabAllTime')?.addEventListener('click', () => switchCollectionsSubTab('allTime'));
     
     // Month navigation (Expenses)
     document.getElementById('prevMonthExpenses')?.addEventListener('click', () => changeExpensesMonth('prev'));
