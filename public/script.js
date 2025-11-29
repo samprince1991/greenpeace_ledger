@@ -769,27 +769,153 @@ async function updateReports() {
     if (totalMaintenanceExpensesEl) totalMaintenanceExpensesEl.textContent = formatCurrency(totalMaintenanceExpenses);
     if (totalCorpusExpensesEl) totalCorpusExpensesEl.textContent = formatCurrency(totalCorpusExpenses);
     
-    // Calculate and update balance (Maintenance only)
-    const balance = totalMaintenanceCollections - totalMaintenanceExpenses;
+    // Calculate previous month's balance (all data up to and including previous month)
+    // Get previous month key
+    const currentDate = monthKey ? new Date(monthKey + '-01') : new Date();
+    const prevDate = new Date(currentDate);
+    prevDate.setMonth(prevDate.getMonth() - 1);
+    const prevMonthKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
     
+    // Get all collections and expenses to calculate cumulative balance up to previous month
+    const allCollections = await getAllCollections();
+    const allExpenses = await getAllExpenses();
+    
+    // Filter collections and expenses up to and including previous month
+    const prevMonthCollections = allCollections.filter(c => {
+        const collectionMonth = c.month || '';
+        return collectionMonth <= prevMonthKey;
+    });
+    
+    const prevMonthExpenses = allExpenses.filter(exp => {
+        const expenseMonth = exp.month || '';
+        return expenseMonth <= prevMonthKey;
+    });
+    
+    // Calculate cumulative Maintenance Collections up to previous month
+    const prevMaintenanceCollections = prevMonthCollections
+        .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                    c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
+        .reduce((sum, c) => {
+            const amount = parseFloat(c.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+    
+    // Calculate cumulative Maintenance Expenses up to previous month
+    const prevMaintenanceExpenses = prevMonthExpenses
+        .filter(exp => {
+            const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                            exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                            exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+            return !isCorpus;
+        })
+        .reduce((sum, exp) => {
+            const amount = parseFloat(exp.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+    
+    // Calculate previous month's Maintenance Balance (cumulative up to previous month)
+    const maintenancePreviousBalance = prevMaintenanceCollections - prevMaintenanceExpenses;
+    
+    // Calculate cumulative Corpus Collections up to previous month
+    const prevCorpusCollections = prevMonthCollections
+        .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                    c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
+        .reduce((sum, c) => {
+            const amount = parseFloat(c.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+    
+    // Calculate cumulative Corpus Expenses up to previous month
+    const prevCorpusExpenses = prevMonthExpenses
+        .filter(exp => {
+            const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                            exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                            exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+            return isCorpus;
+        })
+        .reduce((sum, exp) => {
+            const amount = parseFloat(exp.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+    
+    // Calculate previous month's Corpus Balance (cumulative up to previous month)
+    const corpusPreviousBalance = prevCorpusCollections - prevCorpusExpenses;
+    
+    // Calculate current month balances including previous month's balance
+    // Balance = Current Month Collections - Current Month Expenses + Previous Month Balance
+    const maintenanceBalance = totalMaintenanceCollections - totalMaintenanceExpenses + maintenancePreviousBalance;
+    const corpusBalance = totalCorpusCollections - totalCorpusExpenses + corpusPreviousBalance;
+    
+    // Update Maintenance Balance Summary (using current month data)
     const totalMaintenanceCollectionsAmountEl = document.getElementById('totalMaintenanceCollectionsAmount');
     const totalMaintenanceExpensesAmountEl = document.getElementById('totalMaintenanceExpensesAmount');
     const balanceAmountEl = document.getElementById('balanceAmount');
-    const balanceCardEl = balanceAmountEl ? balanceAmountEl.closest('.bg-indigo-50') : null;
+    const maintenanceBalanceCardEl = document.getElementById('maintenanceBalanceCard');
+    const maintenancePreviousBalanceAmountEl = document.getElementById('maintenancePreviousBalanceAmount');
+    const maintenancePreviousBalanceCardEl = document.getElementById('maintenancePreviousBalanceCard');
     
     if (totalMaintenanceCollectionsAmountEl) totalMaintenanceCollectionsAmountEl.textContent = formatCurrency(totalMaintenanceCollections);
     if (totalMaintenanceExpensesAmountEl) totalMaintenanceExpensesAmountEl.textContent = formatCurrency(totalMaintenanceExpenses);
+    if (maintenancePreviousBalanceAmountEl) {
+        maintenancePreviousBalanceAmountEl.textContent = formatCurrency(maintenancePreviousBalance);
+        maintenancePreviousBalanceAmountEl.className = `text-lg font-bold ${maintenancePreviousBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+        
+        if (maintenancePreviousBalanceCardEl) {
+            maintenancePreviousBalanceCardEl.className = `rounded-lg p-3 ${maintenancePreviousBalance >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`;
+            const prevBalanceLabel = maintenancePreviousBalanceCardEl.querySelector('p.text-blue-600, p.text-emerald-600, p.text-red-600');
+            if (prevBalanceLabel) {
+                prevBalanceLabel.className = `text-xs mb-1 ${maintenancePreviousBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+            }
+        }
+    }
     if (balanceAmountEl) {
-        balanceAmountEl.textContent = formatCurrency(balance);
+        balanceAmountEl.textContent = formatCurrency(maintenanceBalance);
         // Update color based on balance
-        balanceAmountEl.className = `text-2xl font-bold ${balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+        balanceAmountEl.className = `text-lg font-bold ${maintenanceBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
         
         // Update balance card background color
-        if (balanceCardEl) {
-            balanceCardEl.className = `rounded-lg p-4 ${balance >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`;
-            const balanceLabel = balanceCardEl.querySelector('p.text-indigo-600');
+        if (maintenanceBalanceCardEl) {
+            maintenanceBalanceCardEl.className = `rounded-lg p-3 ${maintenanceBalance >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`;
+            const balanceLabel = maintenanceBalanceCardEl.querySelector('p.text-indigo-600, p.text-emerald-600, p.text-red-600');
             if (balanceLabel) {
-                balanceLabel.className = `text-sm mb-1 ${balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+                balanceLabel.className = `text-xs mb-1 ${maintenanceBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+            }
+        }
+    }
+    
+    // Update Corpus Balance Summary (using current month data)
+    const totalCorpusCollectionsAmountEl = document.getElementById('totalCorpusCollectionsAmount');
+    const totalCorpusExpensesAmountEl = document.getElementById('totalCorpusExpensesAmount');
+    const corpusBalanceAmountEl = document.getElementById('corpusBalanceAmount');
+    const corpusBalanceCardEl = document.getElementById('corpusBalanceCard');
+    const corpusPreviousBalanceAmountEl = document.getElementById('corpusPreviousBalanceAmount');
+    const corpusPreviousBalanceCardEl = document.getElementById('corpusPreviousBalanceCard');
+    
+    if (totalCorpusCollectionsAmountEl) totalCorpusCollectionsAmountEl.textContent = formatCurrency(totalCorpusCollections);
+    if (totalCorpusExpensesAmountEl) totalCorpusExpensesAmountEl.textContent = formatCurrency(totalCorpusExpenses);
+    if (corpusPreviousBalanceAmountEl) {
+        corpusPreviousBalanceAmountEl.textContent = formatCurrency(corpusPreviousBalance);
+        corpusPreviousBalanceAmountEl.className = `text-lg font-bold ${corpusPreviousBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+        
+        if (corpusPreviousBalanceCardEl) {
+            corpusPreviousBalanceCardEl.className = `rounded-lg p-3 ${corpusPreviousBalance >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`;
+            const prevBalanceLabel = corpusPreviousBalanceCardEl.querySelector('p.text-blue-600, p.text-emerald-600, p.text-red-600');
+            if (prevBalanceLabel) {
+                prevBalanceLabel.className = `text-xs mb-1 ${corpusPreviousBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+            }
+        }
+    }
+    if (corpusBalanceAmountEl) {
+        corpusBalanceAmountEl.textContent = formatCurrency(corpusBalance);
+        // Update color based on balance
+        corpusBalanceAmountEl.className = `text-lg font-bold ${corpusBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+        
+        // Update balance card background color
+        if (corpusBalanceCardEl) {
+            corpusBalanceCardEl.className = `rounded-lg p-3 ${corpusBalance >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`;
+            const corpusBalanceLabel = corpusBalanceCardEl.querySelector('p.text-amber-600, p.text-emerald-600, p.text-red-600');
+            if (corpusBalanceLabel) {
+                corpusBalanceLabel.className = `text-xs mb-1 ${corpusBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
             }
         }
     }
