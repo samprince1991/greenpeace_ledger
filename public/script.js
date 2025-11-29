@@ -343,6 +343,7 @@ function switchTab(tabName) {
             }
         }
         displayCollectionsTable();
+        updateAllTimeHouseTotals();
     } else if (tabName === UI_CONFIG.TABS.EXPENSES) {
         if (!expensesMonth) {
             expensesMonth = defaultMonth;
@@ -582,6 +583,88 @@ async function updateHousesSummary() {
             </tr>
         `;
     }).join('');
+}
+
+async function updateAllTimeHouseTotals() {
+    const tbody = document.getElementById('allTimeHouseTotalsBody');
+    if (!tbody) return;
+    
+    // Get all collections (no month filter)
+    const allCollections = await getAllCollections();
+    
+    // Get flats from config
+    const flats = FLATS_CONFIG.FLATS;
+    
+    // Calculate maintenance and corpus separately per flat across all time
+    const flatData = {};
+    let grandTotalMaintenance = 0;
+    let grandTotalCorpus = 0;
+    
+    flats.forEach(flat => {
+        const flatCollections = allCollections.filter(c => (c.flatNumber || c.category) === flat);
+        
+        const maintenance = flatCollections
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
+            .reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+        
+        const corpus = flatCollections
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
+            .reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+        
+        const total = maintenance + corpus;
+        
+        flatData[flat] = {
+            maintenance: maintenance,
+            corpus: corpus,
+            total: total
+        };
+        
+        grandTotalMaintenance += maintenance;
+        grandTotalCorpus += corpus;
+    });
+    
+    // Generate HTML for table rows
+    if (flats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = flats.map(flat => {
+        const data = flatData[flat];
+        const hasCollection = data.total > 0;
+        
+        return `
+            <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
+                <td class="px-6 py-4 text-right font-semibold ${data.maintenance > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                    ${formatCurrency(data.maintenance)}
+                </td>
+                <td class="px-6 py-4 text-right font-semibold ${data.corpus > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                    ${formatCurrency(data.corpus)}
+                </td>
+                <td class="px-6 py-4 text-right font-bold ${hasCollection ? 'text-slate-900' : 'text-slate-400'}">
+                    ${formatCurrency(data.total)}
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Update footer totals
+    const allTimeTotalMaintenanceEl = document.getElementById('allTimeTotalMaintenance');
+    const allTimeTotalCorpusEl = document.getElementById('allTimeTotalCorpus');
+    const allTimeGrandTotalEl = document.getElementById('allTimeGrandTotal');
+    
+    if (allTimeTotalMaintenanceEl) allTimeTotalMaintenanceEl.textContent = formatCurrency(grandTotalMaintenance);
+    if (allTimeTotalCorpusEl) allTimeTotalCorpusEl.textContent = formatCurrency(grandTotalCorpus);
+    if (allTimeGrandTotalEl) allTimeGrandTotalEl.textContent = formatCurrency(grandTotalMaintenance + grandTotalCorpus);
 }
 
 async function updateReports() {
@@ -1903,6 +1986,7 @@ async function handleDeleteCollection(id) {
     if (result.success) {
         showNotification('Collection deleted successfully!');
         await displayCollectionsTable();
+        await updateAllTimeHouseTotals();
         await updateDashboard();
     } else {
         showNotification('Error deleting collection: ' + (result.error || 'Unknown error'), 'error');
@@ -2031,6 +2115,7 @@ async function handleAddCollection(e) {
         closeCollectionModal();
         // Force refresh dashboard and collections to show updated stats
         await displayCollectionsTable();
+        await updateAllTimeHouseTotals();
         await updateDashboard();
     } else {
         showNotification('Error adding collection: ' + (result.error || 'Unknown error'), 'error');
