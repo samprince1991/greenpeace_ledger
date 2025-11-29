@@ -778,7 +778,7 @@ async function updateYearlyHouseBreakdown() {
     
     monthTotals.forEach(total => {
         const td = document.createElement('td');
-        td.className = 'px-3 py-4 text-center text-slate-900 font-semibold';
+        td.className = 'px-3 py-4 text-center text-sm text-slate-900 font-semibold';
         td.textContent = formatCurrency(total);
         if (grandTotalCell) {
             grandTotalCell.insertAdjacentElement('beforebegin', td);
@@ -2111,10 +2111,10 @@ async function displayCollectionsTable() {
         totalCorpus += item.corpus;
         grandTotal += total;
         
-        // Style amounts: font-semibold for non-zero, regular weight for zero
-        const maintenanceClass = item.maintenance > 0 ? 'text-slate-700 font-semibold' : 'text-slate-400';
-        const corpusClass = item.corpus > 0 ? 'text-slate-700 font-semibold' : 'text-slate-400';
-        const totalClass = total > 0 ? 'text-slate-900 font-semibold' : 'text-slate-400';
+        // Style amounts: emerald color for non-zero, gray for zero (matching yearly breakdown)
+        const maintenanceClass = item.maintenance > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-400';
+        const corpusClass = item.corpus > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-400';
+        const totalClass = total > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-400';
         
         return `
             <tr class="hover:bg-slate-50/80 transition-colors">
