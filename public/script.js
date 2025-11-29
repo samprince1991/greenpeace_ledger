@@ -9,6 +9,7 @@ let currentMonth = ''; // Format: YYYY-MM for month selector (Dashboard)
 let currentMonthFormatted = ''; // Format: MonthName-YYYY for storage
 let collectionsMonth = ''; // Format: YYYY-MM for Collections tab
 let expensesMonth = ''; // Format: YYYY-MM for Expenses tab
+let reportsMonth = ''; // Format: YYYY-MM for Reports tab
 let currentExpenses = [];
 let currentCollections = [];
 let activeTab = UI_CONFIG.TABS.DASHBOARD;
@@ -341,6 +342,14 @@ function switchTab(tabName) {
             }
         }
         displayExpensesTable();
+    } else if (tabName === UI_CONFIG.TABS.REPORTS) {
+        if (!reportsMonth) {
+            reportsMonth = defaultMonth;
+            if (reportsMonthPicker) {
+                reportsMonthPicker.setDate(now, true);
+            }
+        }
+        updateReports();
     }
 }
 
@@ -606,6 +615,142 @@ async function updateHousesSummary() {
             </tr>
         `;
     }).join('');
+}
+
+async function updateReports() {
+    const totalTbody = document.getElementById('totalReportsTableBody');
+    const monthlyTbody = document.getElementById('monthlyReportsTableBody');
+    
+    if (!totalTbody || !monthlyTbody) return;
+    
+    // Get all collections (all-time data)
+    const allCollections = await getAllCollections();
+    
+    // Get collections for selected month
+    const monthKey = reportsMonth || currentMonth;
+    const monthCollections = monthKey ? await getCollectionsByMonth(monthKey) : [];
+    
+    // Get flats from config
+    const flats = FLATS_CONFIG.FLATS;
+    
+    // Calculate maintenance and corpus separately per flat (all-time and monthly)
+    const flatDataAllTime = {};
+    const flatDataMonthly = {};
+    let totalMaintenanceAllTime = 0;
+    let totalCorpusAllTime = 0;
+    let totalMaintenanceThisMonth = 0;
+    let totalCorpusThisMonth = 0;
+    
+    flats.forEach(flat => {
+        // All-time collections
+        const flatCollectionsAllTime = allCollections.filter(c => (c.flatNumber || c.category) === flat);
+        
+        const maintenanceAllTime = flatCollectionsAllTime
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
+            .reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+        
+        const corpusAllTime = flatCollectionsAllTime
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
+            .reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+        
+        // This month collections
+        const flatCollectionsThisMonth = monthCollections.filter(c => (c.flatNumber || c.category) === flat);
+        
+        const maintenanceThisMonth = flatCollectionsThisMonth
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
+            .reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+        
+        const corpusThisMonth = flatCollectionsThisMonth
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
+            .reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+        
+        flatDataAllTime[flat] = {
+            maintenance: maintenanceAllTime,
+            corpus: corpusAllTime,
+            total: maintenanceAllTime + corpusAllTime
+        };
+        
+        flatDataMonthly[flat] = {
+            maintenance: maintenanceThisMonth,
+            corpus: corpusThisMonth,
+            total: maintenanceThisMonth + corpusThisMonth
+        };
+        
+        totalMaintenanceAllTime += maintenanceAllTime;
+        totalCorpusAllTime += corpusAllTime;
+        totalMaintenanceThisMonth += maintenanceThisMonth;
+        totalCorpusThisMonth += corpusThisMonth;
+    });
+    
+    // Generate HTML for Total Report table
+    if (flats.length === 0) {
+        totalTbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+        monthlyTbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+        return;
+    }
+    
+    totalTbody.innerHTML = flats.map(flat => {
+        const data = flatDataAllTime[flat];
+        
+        return `
+            <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
+                <td class="px-6 py-4 text-right font-semibold ${data.maintenance > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                    ${formatCurrency(data.maintenance)}
+                </td>
+                <td class="px-6 py-4 text-right font-semibold ${data.corpus > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                    ${formatCurrency(data.corpus)}
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Generate HTML for Monthly Report table
+    monthlyTbody.innerHTML = flats.map(flat => {
+        const data = flatDataMonthly[flat];
+        
+        return `
+            <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
+                <td class="px-6 py-4 text-right font-semibold ${data.maintenance > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                    ${formatCurrency(data.maintenance)}
+                </td>
+                <td class="px-6 py-4 text-right font-semibold ${data.corpus > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                    ${formatCurrency(data.corpus)}
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Update totals for Total Report
+    const totalMaintenanceAllTimeEl = document.getElementById('totalMaintenanceAllTime');
+    const totalCorpusAllTimeEl = document.getElementById('totalCorpusAllTime');
+    
+    if (totalMaintenanceAllTimeEl) totalMaintenanceAllTimeEl.textContent = formatCurrency(totalMaintenanceAllTime);
+    if (totalCorpusAllTimeEl) totalCorpusAllTimeEl.textContent = formatCurrency(totalCorpusAllTime);
+    
+    // Update totals for Monthly Report
+    const totalMaintenanceThisMonthEl = document.getElementById('totalMaintenanceThisMonth');
+    const totalCorpusThisMonthEl = document.getElementById('totalCorpusThisMonth');
+    
+    if (totalMaintenanceThisMonthEl) totalMaintenanceThisMonthEl.textContent = formatCurrency(totalMaintenanceThisMonth);
+    if (totalCorpusThisMonthEl) totalCorpusThisMonthEl.textContent = formatCurrency(totalCorpusThisMonth);
 }
 
 async function updateRecentActivity() {
@@ -1047,6 +1192,38 @@ function changeExpensesMonth(direction) {
     }
 }
 
+function changeReportsMonth(direction) {
+    if (reportsMonthPicker) {
+        const currentDate = reportsMonthPicker.selectedDates[0] || new Date();
+        const newDate = new Date(currentDate);
+        
+        if (direction === 'prev') {
+            newDate.setMonth(newDate.getMonth() - 1);
+        } else {
+            newDate.setMonth(newDate.getMonth() + 1);
+        }
+        
+        reportsMonthPicker.setDate(newDate, true);
+    } else {
+        // Fallback if Flatpickr not initialized
+        const now = new Date();
+        if (!reportsMonth) {
+            reportsMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+        const [year, month] = reportsMonth.split('-').map(Number);
+        const date = new Date(year, month - 1, 1);
+        
+        if (direction === 'prev') {
+            date.setMonth(date.getMonth() - 1);
+        } else {
+            date.setMonth(date.getMonth() + 1);
+        }
+        
+        reportsMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        updateReports();
+    }
+}
+
 // ============================================
 // Flatpickr Initialization
 // ============================================
@@ -1054,6 +1231,7 @@ function changeExpensesMonth(direction) {
 let monthSelectorPicker = null;
 let collectionsMonthPicker = null;
 let expensesMonthPicker = null;
+let reportsMonthPicker = null;
 let collectionDatePicker = null;
 let expenseDatePicker = null;
 
@@ -1165,6 +1343,30 @@ function initializeFlatpickr() {
         });
         expensesMonthInput.value = expensesMonthPicker.input.value;
     }
+    
+    // Initialize Reports month selector
+    const reportsMonthInput = document.getElementById('monthSelectorReports');
+    if (reportsMonthInput && typeof monthSelectPlugin !== 'undefined') {
+        const now = new Date();
+        reportsMonthPicker = flatpickr(reportsMonthInput, {
+            plugins: [new monthSelectPlugin({
+                shorthand: false,
+                dateFormat: "F Y",
+                altFormat: "F Y"
+            })],
+            dateFormat: "Y-m",
+            defaultDate: now,
+            onChange: async function(selectedDates, dateStr, instance) {
+                if (selectedDates.length > 0) {
+                    const date = selectedDates[0];
+                    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    reportsMonth = month;
+                    await updateReports();
+                }
+            }
+        });
+        reportsMonthInput.value = reportsMonthPicker.input.value;
+    }
 }
 
 // ============================================
@@ -1256,6 +1458,10 @@ function setupEventListeners() {
     // Month navigation (Expenses)
     document.getElementById('prevMonthExpenses')?.addEventListener('click', () => changeExpensesMonth('prev'));
     document.getElementById('nextMonthExpenses')?.addEventListener('click', () => changeExpensesMonth('next'));
+    
+    // Month navigation (Reports)
+    document.getElementById('prevMonthReports')?.addEventListener('click', () => changeReportsMonth('prev'));
+    document.getElementById('nextMonthReports')?.addEventListener('click', () => changeReportsMonth('next'));
     
     // Mobile menu
     document.getElementById('mobileMenuBtn')?.addEventListener('click', openMobileMenu);

@@ -391,13 +391,87 @@
         </div>
 
         <!-- Reports View -->
-        <div id="reportsView" class="flex flex-col items-center justify-center h-96 text-center space-y-4 view-hidden">
-            <div class="bg-indigo-50 p-4 rounded-full text-indigo-500">
-                <i data-lucide="file-text" class="w-12 h-12"></i>
+        <div id="reportsView" class="space-y-6 view-hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Total Report Section -->
+                <div>
+                    <div class="flex flex-col justify-between items-start gap-4 mb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900">Total Report</h2>
+                            <p class="text-slate-500 mt-1">All-time Corpus and Maintenance Collected per House</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200">
+                                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">House/Flat</th>
+                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Maintenance</th>
+                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Corpus</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="totalReportsTableBody" class="bg-white divide-y divide-slate-200">
+                                    <tr>
+                                        <td colspan="3" class="px-6 py-8 text-center text-slate-400">Loading reports...</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="bg-slate-50">
+                                    <tr class="font-semibold">
+                                        <td class="px-6 py-4 text-left text-slate-900">Total</td>
+                                        <td id="totalMaintenanceAllTime" class="px-6 py-4 text-right text-slate-900">₹0</td>
+                                        <td id="totalCorpusAllTime" class="px-6 py-4 text-right text-slate-900">₹0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Report Section -->
+                <div>
+                    <div class="flex flex-col justify-between items-start gap-4 mb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900">Monthly Report</h2>
+                            <p class="text-slate-500 mt-1">Monthly Corpus and Maintenance Collected per House</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                                <button id="prevMonthReports" class="p-1 hover:bg-slate-100 rounded">←</button>
+                                <input type="text" id="monthSelectorReports" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer w-32">
+                                <button id="nextMonthReports" class="p-1 hover:bg-slate-100 rounded">→</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200">
+                                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">House/Flat</th>
+                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Maintenance</th>
+                                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Corpus</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monthlyReportsTableBody" class="bg-white divide-y divide-slate-200">
+                                    <tr>
+                                        <td colspan="3" class="px-6 py-8 text-center text-slate-400">Loading reports...</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="bg-slate-50">
+                                    <tr class="font-semibold">
+                                        <td class="px-6 py-4 text-left text-slate-900">Total</td>
+                                        <td id="totalMaintenanceThisMonth" class="px-6 py-4 text-right text-slate-900">₹0</td>
+                                        <td id="totalCorpusThisMonth" class="px-6 py-4 text-right text-slate-900">₹0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900">Reports Module</h3>
-            <p class="text-slate-500 max-w-md">Detailed PDF and CSV reports for auditors will be generated here.</p>
-            <button id="downloadSampleBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Download Month Sample</button>
         </div>
     </main>
 
