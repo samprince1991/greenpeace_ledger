@@ -1,9 +1,7 @@
 // Configuration - loaded from config files
 // Note: Config files must be loaded before this script
 const CONFIG = {
-    DEFAULT_MAINTENANCE_PER_FLAT: APP_CONFIG.DEFAULT_MAINTENANCE_PER_FLAT,
-    TOTAL_FLATS: APP_CONFIG.TOTAL_FLATS,
-    STORAGE_KEYS: APP_CONFIG.STORAGE_KEYS
+    TOTAL_FLATS: APP_CONFIG.TOTAL_FLATS
 };
 
 // Global state
@@ -13,38 +11,22 @@ let collectionsMonth = ''; // Format: YYYY-MM for Collections tab
 let expensesMonth = ''; // Format: YYYY-MM for Expenses tab
 let currentExpenses = [];
 let currentCollections = [];
-let maintenancePerFlat = CONFIG.DEFAULT_MAINTENANCE_PER_FLAT;
 let activeTab = UI_CONFIG.TABS.DASHBOARD;
 let collectionType = APP_CONFIG.DEFAULTS.COLLECTION_TYPE; // 'maintenance' or 'corpus'
 let expenseDeductionSource = APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE; // 'maintenance' or 'corpus'
 
 // ============================================
-// Data Storage Layer (localStorage)
+// Data Storage Layer (API calls to MySQL)
 // ============================================
 
-// Initialize storage with default data if empty
-function initializeStorage() {
-    if (!localStorage.getItem(CONFIG.STORAGE_KEYS.EXPENSES)) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify([]));
-    }
-    
-    if (!localStorage.getItem(CONFIG.STORAGE_KEYS.SETTINGS)) {
-        const defaultSettings = {
-            MaintenancePerFlat: APP_CONFIG.DEFAULT_MAINTENANCE_PER_FLAT.toString()
-        };
-        localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(defaultSettings));
-    }
-    
-    if (!localStorage.getItem(CONFIG.STORAGE_KEYS.COLLECTIONS)) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify([]));
-    }
-}
-
 // Get all expenses
-function getAllExpenses() {
+async function getAllExpenses() {
     try {
-        const data = localStorage.getItem(CONFIG.STORAGE_KEYS.EXPENSES);
-        return data ? JSON.parse(data) : [];
+        const response = await fetch('/api/expenses');
+        if (!response.ok) {
+            throw new Error('Failed to fetch expenses');
+        }
+        return await response.json();
     } catch (error) {
         console.error('Error reading expenses:', error);
         return [];
@@ -52,46 +34,70 @@ function getAllExpenses() {
 }
 
 // Get all collections
-function getAllCollections() {
+async function getAllCollections() {
     try {
-        const data = localStorage.getItem(CONFIG.STORAGE_KEYS.COLLECTIONS);
-        return data ? JSON.parse(data) : [];
+        const response = await fetch('/api/collections');
+        if (!response.ok) {
+            throw new Error('Failed to fetch collections');
+        }
+        return await response.json();
     } catch (error) {
         console.error('Error reading collections:', error);
         return [];
     }
 }
 
-// Get expenses by month (supports both YYYY-MM and MonthName-YYYY)
-function getExpensesByMonth(month) {
-    const allExpenses = getAllExpenses();
-    return allExpenses.filter(expense => {
-        const expenseMonth = expense.month || '';
-        // Check if month matches either format
-        return expenseMonth === month || expenseMonth === convertMonthFormat(month);
-    });
+// Get expenses by month (expects YYYY-MM format)
+async function getExpensesByMonth(month) {
+    try {
+        // Ensure month is in YYYY-MM format
+        const monthKey = month.includes('-') && month.length > 7 ? 
+            convertMonthFormatReverse(month) : month;
+        const response = await fetch(`/api/expenses?month=${encodeURIComponent(monthKey)}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch expenses');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error reading expenses by month:', error);
+        return [];
+    }
 }
 
-// Get collections by month (supports both YYYY-MM and MonthName-YYYY)
-function getCollectionsByMonth(month) {
-    const allCollections = getAllCollections();
-    return allCollections.filter(collection => {
-        const collectionMonth = collection.month || '';
-        return collectionMonth === month || collectionMonth === convertMonthFormat(month);
-    });
+// Get collections by month (expects YYYY-MM format)
+async function getCollectionsByMonth(month) {
+    try {
+        // Ensure month is in YYYY-MM format
+        const monthKey = month.includes('-') && month.length > 7 ? 
+            convertMonthFormatReverse(month) : month;
+        const response = await fetch(`/api/collections?month=${encodeURIComponent(monthKey)}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch collections');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error reading collections by month:', error);
+        return [];
+    }
 }
 
 // Add expense
-function addExpense(expenseData) {
+async function addExpense(expenseData) {
     try {
-        const expenses = getAllExpenses();
-        const newExpense = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            ...expenseData,
-            createdAt: new Date().toISOString()
-        };
-        expenses.push(newExpense);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+        const response = await fetch('/api/expenses', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(expenseData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to add expense');
+        }
+        
+        const newExpense = await response.json();
         return { success: true, expense: newExpense };
     } catch (error) {
         console.error('Error adding expense:', error);
@@ -100,16 +106,22 @@ function addExpense(expenseData) {
 }
 
 // Add collection
-function addCollection(collectionData) {
+async function addCollection(collectionData) {
     try {
-        const collections = getAllCollections();
-        const newCollection = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            ...collectionData,
-            createdAt: new Date().toISOString()
-        };
-        collections.push(newCollection);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify(collections));
+        const response = await fetch('/api/collections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(collectionData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to add collection');
+        }
+        
+        const newCollection = await response.json();
         return { success: true, collection: newCollection };
     } catch (error) {
         console.error('Error adding collection:', error);
@@ -118,11 +130,17 @@ function addCollection(collectionData) {
 }
 
 // Delete expense
-function deleteExpense(id) {
+async function deleteExpense(id) {
     try {
-        const expenses = getAllExpenses();
-        const filtered = expenses.filter(exp => exp.id !== id);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify(filtered));
+        const response = await fetch(`/api/expenses/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete expense');
+        }
+        
         return { success: true };
     } catch (error) {
         console.error('Error deleting expense:', error);
@@ -131,11 +149,17 @@ function deleteExpense(id) {
 }
 
 // Delete collection
-function deleteCollection(id) {
+async function deleteCollection(id) {
     try {
-        const collections = getAllCollections();
-        const filtered = collections.filter(col => col.id !== id);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify(filtered));
+        const response = await fetch(`/api/collections/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete collection');
+        }
+        
         return { success: true };
     } catch (error) {
         console.error('Error deleting collection:', error);
@@ -144,8 +168,8 @@ function deleteCollection(id) {
 }
 
     // Get total collected for a specific month (maintenance only)
-function getTotalCollectedForMonth(month) {
-    const collections = getCollectionsByMonth(month);
+async function getTotalCollectedForMonth(month) {
+    const collections = await getCollectionsByMonth(month);
     return collections
         .filter(col => col.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
                       col.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
@@ -153,8 +177,8 @@ function getTotalCollectedForMonth(month) {
 }
 
 // Get total corpus for all time
-function getTotalCorpusAllTime() {
-    const allCollections = getAllCollections();
+async function getTotalCorpusAllTime() {
+    const allCollections = await getAllCollections();
     const corpusCollections = allCollections.filter(col => {
         const isCorpus = col.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
                         col.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
@@ -181,6 +205,23 @@ function convertMonthFormat(monthStr) {
     const [year, month] = monthStr.split('-');
     const monthIndex = parseInt(month) - 1;
     return `${APP_CONFIG.MONTH_NAMES[monthIndex]}-${year}`;
+}
+
+// Convert MonthName-YYYY to YYYY-MM
+function convertMonthFormatReverse(monthStr) {
+    if (!monthStr) return '';
+    if (monthStr.match(/^\d{4}-\d{2}$/)) {
+        // Already in YYYY-MM format
+        return monthStr;
+    }
+    // Convert MonthName-YYYY to YYYY-MM
+    const parts = monthStr.split('-');
+    if (parts.length !== 2) return monthStr;
+    const monthName = parts[0];
+    const year = parts[1];
+    const monthIndex = APP_CONFIG.MONTH_NAMES.indexOf(monthName);
+    if (monthIndex === -1) return monthStr;
+    return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 }
 
 // Format currency
@@ -401,10 +442,10 @@ function closeMobileMenu() {
 // Display Functions
 // ============================================
 
-function updateDashboard() {
+async function updateDashboard() {
     const monthKey = currentMonth;
-    const expenses = getExpensesByMonth(monthKey);
-    const collections = getCollectionsByMonth(monthKey);
+    const expenses = await getExpensesByMonth(monthKey);
+    const collections = await getCollectionsByMonth(monthKey);
     
     // Calculate monthly stats (for this month)
     const maintenanceIncome = collections
@@ -447,8 +488,8 @@ function updateDashboard() {
     }, 0);
     
     // Calculate all-time stats for Current Balance
-    const allCollections = getAllCollections();
-    const allExpenses = getAllExpenses();
+    const allCollections = await getAllCollections();
+    const allExpenses = await getAllExpenses();
     
     const allTimeMaintenance = allCollections
         .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
@@ -475,7 +516,7 @@ function updateDashboard() {
     const balance = allTimeMaintenance - allTimeMaintenanceExpenses;
     
     // Calculate corpus fund: all-time corpus collections - all-time corpus expenses
-    const allTimeCorpus = getTotalCorpusAllTime();
+    const allTimeCorpus = await getTotalCorpusAllTime();
     const allTimeCorpusExpenses = allExpenses
         .filter(exp => {
             const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
@@ -498,16 +539,16 @@ function updateDashboard() {
     document.getElementById('totalCorpusFund').textContent = formatCurrency(corpusFundBalance);
     
     // Update recent activity
-    updateRecentActivity();
+    await updateRecentActivity();
 }
 
-function updateHousesSummary() {
+async function updateHousesSummary() {
     const container = document.getElementById('housesSummary');
     if (!container) return;
     
     // Use collectionsMonth if on collections page, otherwise use currentMonth (for dashboard)
     const monthKey = activeTab === UI_CONFIG.TABS.COLLECTIONS && collectionsMonth ? collectionsMonth : currentMonth;
-    const collections = getCollectionsByMonth(monthKey);
+    const collections = await getCollectionsByMonth(monthKey);
     
     // Get flats from config
     const flats = FLATS_CONFIG.FLATS;
@@ -567,10 +608,10 @@ function updateHousesSummary() {
     }).join('');
 }
 
-function updateRecentActivity() {
+async function updateRecentActivity() {
     const container = document.getElementById('recentActivity');
-    const allExpenses = getAllExpenses();
-    const allCollections = getAllCollections();
+    const allExpenses = await getAllExpenses();
+    const allCollections = await getAllCollections();
     
     // Combine and sort by date
     const allTransactions = [
@@ -619,13 +660,13 @@ function updateRecentActivity() {
     }
 }
 
-function displayCollectionsTable() {
+async function displayCollectionsTable() {
     const tbody = document.getElementById('collectionsTableBody');
-    let collections = getAllCollections();
+    let collections = await getAllCollections();
     
     // Filter by month if a month is selected (empty string means show all)
     if (collectionsMonth && collectionsMonth !== '') {
-        collections = getCollectionsByMonth(collectionsMonth);
+        collections = await getCollectionsByMonth(collectionsMonth);
     }
     
     collections = collections.sort((a, b) => {
@@ -635,7 +676,7 @@ function displayCollectionsTable() {
     });
     
     // Update houses summary when collections table is displayed
-    updateHousesSummary();
+    await updateHousesSummary();
     
     if (collections.length === 0) {
         tbody.innerHTML = '<tr><td colSpan="6" class="px-6 py-8 text-center text-slate-400">No collections found.</td></tr>';
@@ -690,13 +731,13 @@ function displayCollectionsTable() {
     }
 }
 
-function displayExpensesTable() {
+async function displayExpensesTable() {
     const tbody = document.getElementById('expensesTableBody');
-    let expenses = getAllExpenses();
+    let expenses = await getAllExpenses();
     
     // Filter by month if a month is selected (empty string means show all)
     if (expensesMonth && expensesMonth !== '') {
-        expenses = getExpensesByMonth(expensesMonth);
+        expenses = await getExpensesByMonth(expensesMonth);
     }
     
     expenses = expenses.sort((a, b) => {
@@ -748,25 +789,25 @@ function displayExpensesTable() {
 // Delete Handlers (global for onclick)
 // ============================================
 
-function handleDeleteExpense(id) {
+async function handleDeleteExpense(id) {
     if (!confirm('Are you sure you want to delete this expense?')) return;
-    const result = deleteExpense(id);
+    const result = await deleteExpense(id);
     if (result.success) {
         showNotification('Expense deleted successfully!');
-        displayExpensesTable();
-        updateDashboard();
+        await displayExpensesTable();
+        await updateDashboard();
     } else {
         showNotification('Error deleting expense: ' + (result.error || 'Unknown error'), 'error');
     }
 }
 
-function handleDeleteCollection(id) {
+async function handleDeleteCollection(id) {
     if (!confirm('Are you sure you want to delete this collection?')) return;
-    const result = deleteCollection(id);
+    const result = await deleteCollection(id);
     if (result.success) {
         showNotification('Collection deleted successfully!');
-        displayCollectionsTable();
-        updateDashboard();
+        await displayCollectionsTable();
+        await updateDashboard();
     } else {
         showNotification('Error deleting collection: ' + (result.error || 'Unknown error'), 'error');
     }
@@ -776,7 +817,7 @@ function handleDeleteCollection(id) {
 // Form Handlers
 // ============================================
 
-function handleAddExpense(e) {
+async function handleAddExpense(e) {
     e.preventDefault();
     
     // Get date from Flatpickr or input
@@ -811,10 +852,9 @@ function handleAddExpense(e) {
     const dateParts = dateValue.split('-');
     const dateObj = new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0]));
     const month = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-    const monthFormatted = convertMonthFormat(month);
     
     const expenseData = {
-        month: monthFormatted,
+        month: month,
         date: dateValue,
         category: category,
         description: description,
@@ -825,19 +865,19 @@ function handleAddExpense(e) {
         subType: expenseDeductionSource // For compatibility
     };
     
-    const result = addExpense(expenseData);
+    const result = await addExpense(expenseData);
     
     if (result.success) {
         showNotification('Expense added successfully!');
         closeExpenseModal();
-        displayExpensesTable();
-        updateDashboard();
+        await displayExpensesTable();
+        await updateDashboard();
     } else {
         showNotification('Error adding expense: ' + (result.error || 'Unknown error'), 'error');
     }
 }
 
-function handleAddCollection(e) {
+async function handleAddCollection(e) {
     e.preventDefault();
     
     // Get date from Flatpickr or input
@@ -872,10 +912,9 @@ function handleAddCollection(e) {
     const dateParts = dateValue.split('-');
     const dateObj = new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0]));
     const month = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-    const monthFormatted = convertMonthFormat(month);
     
     const collectionData = {
-        month: monthFormatted,
+        month: month,
         date: dateValue,
         type: collectionType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ? 
               APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE : 
@@ -889,16 +928,14 @@ function handleAddCollection(e) {
         collectedBy: APP_CONFIG.DEFAULTS.COLLECTED_BY
     };
     
-    const result = addCollection(collectionData);
+    const result = await addCollection(collectionData);
     
     if (result.success) {
         showNotification('Collection added successfully!');
         closeCollectionModal();
         // Force refresh dashboard and collections to show updated stats
-        setTimeout(() => {
-            displayCollectionsTable();
-            updateDashboard();
-        }, 100);
+        await displayCollectionsTable();
+        await updateDashboard();
     } else {
         showNotification('Error adding collection: ' + (result.error || 'Unknown error'), 'error');
     }
@@ -1041,13 +1078,13 @@ function initializeFlatpickr() {
             })],
             dateFormat: APP_CONFIG.DATE_FORMATS.MONTH_SELECTOR.replace('YYYY', 'Y').replace('MM', 'm'),
             defaultDate: now,
-            onChange: function(selectedDates, dateStr, instance) {
+            onChange: async function(selectedDates, dateStr, instance) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
                     const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     currentMonth = month;
                     currentMonthFormatted = convertMonthFormat(month);
-                    updateDashboard();
+                    await updateDashboard();
                 }
             }
         });
@@ -1092,13 +1129,13 @@ function initializeFlatpickr() {
             })],
             dateFormat: "Y-m",
             defaultDate: now,
-            onChange: function(selectedDates, dateStr, instance) {
+            onChange: async function(selectedDates, dateStr, instance) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
                     const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     collectionsMonth = month;
-                    displayCollectionsTable();
-                    updateHousesSummary();
+                    await displayCollectionsTable();
+                    await updateHousesSummary();
                 }
             }
         });
@@ -1117,12 +1154,12 @@ function initializeFlatpickr() {
             })],
             dateFormat: "Y-m",
             defaultDate: now,
-            onChange: function(selectedDates, dateStr, instance) {
+            onChange: async function(selectedDates, dateStr, instance) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
                     const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     expensesMonth = month;
-                    displayExpensesTable();
+                    await displayExpensesTable();
                 }
             }
         });
@@ -1134,9 +1171,7 @@ function initializeFlatpickr() {
 // Initialization
 // ============================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    initializeStorage();
-    
+document.addEventListener('DOMContentLoaded', async function() {
     // Set current month
     const now = new Date();
     currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -1155,9 +1190,9 @@ document.addEventListener('DOMContentLoaded', function() {
     switchTab(UI_CONFIG.TABS.DASHBOARD);
     
     // Initialize dashboard
-    updateDashboard();
-    displayCollectionsTable();
-    displayExpensesTable();
+    await updateDashboard();
+    await displayCollectionsTable();
+    await displayExpensesTable();
     
     // Initialize icons
     if (typeof lucide !== 'undefined') {

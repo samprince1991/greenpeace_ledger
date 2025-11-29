@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apt. Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Flatpickr MonthSelect Plugin CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <style>
+        .notification {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .view-hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans">
+    <!-- Fixed Top Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 h-16 bg-slate-900 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <span class="font-bold text-lg">A</span>
+                </div>
+                <span class="font-bold text-lg tracking-tight hidden sm:block">Apt. Tracker</span>
+                <span class="font-bold text-lg tracking-tight sm:hidden">Tracker</span>
+            </div>
+
+            <!-- Desktop Navigation Links -->
+            <div class="hidden md:flex items-center gap-1">
+                <button data-tab="dashboard" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-900/20">
+                    <i data-lucide="layout-dashboard" class="w-[18px] h-[18px]"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button data-tab="collections" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i data-lucide="wallet" class="w-[18px] h-[18px]"></i>
+                    <span>Collections</span>
+                </button>
+                <button data-tab="expenses" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i data-lucide="receipt" class="w-[18px] h-[18px]"></i>
+                    <span>Expenses</span>
+                </button>
+                <button data-tab="reports" class="nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
+                    <span>Reports</span>
+                </button>
+            </div>
+
+            <!-- Right Side: Profile & Mobile Toggle -->
+            <div class="flex items-center gap-4">
+                <!-- User Profile (Desktop) -->
+                <div class="hidden md:flex items-center gap-3 pl-4 border-l border-slate-700">
+                    <div class="text-right hidden lg:block">
+                        <p class="text-sm font-medium text-white">Admin</p>
+                        <p class="text-xs text-slate-500">Secretary</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-600">
+                        AD
+                    </div>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuBtn" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay & Drawer -->
+    <div id="mobileMenu" class="fixed inset-0 z-50 md:hidden view-hidden">
+        <!-- Backdrop -->
+        <div id="mobileMenuBackdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+        
+        <!-- Drawer -->
+        <div class="absolute right-0 top-0 bottom-0 w-64 bg-slate-900 shadow-2xl p-6 transform transition-transform duration-200 flex flex-col">
+            <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+                <span class="font-bold text-xl text-white">Menu</span>
+                <button id="closeMobileMenu" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="space-y-2 flex-1">
+                <button data-tab="dashboard" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all bg-indigo-600 text-white">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button data-tab="collections" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="wallet" class="w-5 h-5"></i>
+                    <span>Collections</span>
+                </button>
+                <button data-tab="expenses" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="receipt" class="w-5 h-5"></i>
+                    <span>Expenses</span>
+                </button>
+                <button data-tab="reports" class="mobile-nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    <span>Reports</span>
+                </button>
+            </div>
+            
+            <!-- User Profile (Mobile Footer) -->
+            <div class="pt-4 border-t border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+                        AD
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-white">Admin</p>
+                        <p class="text-xs text-slate-500">Secretary</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Area -->
+    <div id="notification" class="notification fixed top-20 right-4 z-50 hidden">
+        <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg" id="notification-content">
+            Success!
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 w-full max-w-7xl mx-auto pt-24 px-4 pb-4 md:px-8 md:pb-8">
+        <!-- Dashboard View -->
+        <div id="dashboardView" class="space-y-6">
+            <!-- Date Filter & Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Dashboard</h2>
+                    <p class="text-slate-500">Overview for Greenpeace Willowbrook</p>
+                </div>
+                <div class="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                    <button id="prevMonth" class="p-1 hover:bg-slate-100 rounded">←</button>
+                    <input type="text" id="monthSelector" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer">
+                    <button id="nextMonth" class="p-1 hover:bg-slate-100 rounded">→</button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="space-y-4">
+                <!-- Top Row: Current Balance & Total Corpus Fund -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Current Balance</p>
+                            <h3 class="text-2xl font-bold text-slate-900" id="currentBalance">₹0</h3>
+                            <p class="text-xs text-slate-400 mt-1">Income - Expenses (All Time)</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-indigo-50">
+                            <i data-lucide="wallet" class="w-6 h-6 text-indigo-600"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Total Corpus Fund</p>
+                            <h3 class="text-2xl font-bold text-slate-900" id="totalCorpusFund">₹0</h3>
+                            <p class="text-xs text-slate-400 mt-1">Lifetime accumulation</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-amber-50">
+                            <i data-lucide="piggy-bank" class="w-6 h-6 text-amber-600"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bottom Row: Maintenance Collected, Corpus Collected, Total Expenses -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Maintenance Collected</p>
+                            <h3 class="text-2xl font-bold text-slate-900" id="maintenanceCollected">₹0</h3>
+                            <p class="text-xs text-slate-400 mt-1">From residents this month</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-emerald-50">
+                            <i data-lucide="trending-up" class="w-6 h-6 text-emerald-600"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Corpus Collected</p>
+                            <h3 class="text-2xl font-bold text-slate-900" id="corpusCollected">₹0</h3>
+                            <p class="text-xs text-slate-400 mt-1">From residents this month</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-amber-50">
+                            <i data-lucide="piggy-bank" class="w-6 h-6 text-amber-600"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Total Expenses</p>
+                            <h3 class="text-2xl font-bold text-slate-900" id="totalExpenses">₹0</h3>
+                            <p class="text-xs text-slate-400 mt-1">Utilities & Services</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-rose-50">
+                            <i data-lucide="trending-down" class="w-6 h-6 text-rose-600"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="grid grid-cols-2 gap-4">
+                <button id="addCollectionBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-white border border-emerald-100 text-emerald-700 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group">
+                    <div class="bg-emerald-100 p-2 rounded-full group-hover:bg-emerald-200 transition-colors">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-semibold">Add Collection</span>
+                </button>
+                <button id="addExpenseBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-white border border-rose-100 text-rose-700 shadow-sm hover:shadow-md hover:border-rose-200 transition-all group">
+                    <div class="bg-rose-100 p-2 rounded-full group-hover:bg-rose-200 transition-colors">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-semibold">Add Expense</span>
+                </button>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-semibold text-slate-800">Recent Activity</h3>
+                    <button data-tab="collections" class="text-sm text-indigo-600 font-medium hover:text-indigo-700">View All</button>
+                </div>
+                <div class="divide-y divide-slate-100" id="recentActivity">
+                    <div class="p-8 text-center text-slate-400">
+                        No transactions recorded yet.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collections View -->
+        <div id="collectionsView" class="space-y-6 view-hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Collections</h2>
+                    <p class="text-slate-500">History of all maintenance & corpus payments</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                        <button id="prevMonthCollections" class="p-1 hover:bg-slate-100 rounded">←</button>
+                        <input type="text" id="monthSelectorCollections" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer w-32">
+                        <button id="nextMonthCollections" class="p-1 hover:bg-slate-100 rounded">→</button>
+                    </div>
+                    <button id="addCollectionBtn2" class="hidden sm:flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+                        <i data-lucide="plus" class="w-[18px] h-[18px]"></i>
+                        <span>Add New</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Houses Collection Summary -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="font-semibold text-slate-800">Collection Summary by House</h3>
+                    <p class="text-xs text-slate-500 mt-1">Total amount received from each flat this month</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-semibold">
+                            <tr>
+                                <th class="px-6 py-4">Flat No.</th>
+                                <th class="px-6 py-4 text-right">Maintenance</th>
+                                <th class="px-6 py-4 text-right">Corpus</th>
+                                <th class="px-6 py-4 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm" id="housesSummary">
+                            <!-- Houses will be dynamically populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="font-semibold text-slate-800">Collection Summary by Date</h3>
+                    <p class="text-xs text-slate-500 mt-1">Total amount received by date</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-semibold">
+                            <tr>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4">Flat No.</th>
+                                <th class="px-6 py-4">Type</th>
+                                <th class="px-6 py-4">Payment</th>
+                                <th class="px-6 py-4 text-right">Amount</th>
+                                <th class="px-6 py-4 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm" id="collectionsTableBody">
+                            <tr>
+                                <td colSpan="6" class="px-6 py-8 text-center text-slate-400">No collections found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expenses View -->
+        <div id="expensesView" class="space-y-6 view-hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Expenses</h2>
+                    <p class="text-slate-500">Track spending on utilities and repairs</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                        <button id="prevMonthExpenses" class="p-1 hover:bg-slate-100 rounded">←</button>
+                        <input type="text" id="monthSelectorExpenses" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer w-32">
+                        <button id="nextMonthExpenses" class="p-1 hover:bg-slate-100 rounded">→</button>
+                    </div>
+                    <button id="addExpenseBtn2" class="hidden sm:flex items-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200">
+                        <i data-lucide="plus" class="w-[18px] h-[18px]"></i>
+                        <span>Add New</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-semibold">
+                            <tr>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4">Category</th>
+                                <th class="px-6 py-4">Description</th>
+                                <th class="px-6 py-4">Deduct From</th>
+                                <th class="px-6 py-4">Payment</th>
+                                <th class="px-6 py-4 text-right">Amount</th>
+                                <th class="px-6 py-4 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm" id="expensesTableBody">
+                            <tr>
+                                <td colSpan="7" class="px-6 py-8 text-center text-slate-400">No expenses found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports View -->
+        <div id="reportsView" class="flex flex-col items-center justify-center h-96 text-center space-y-4 view-hidden">
+            <div class="bg-indigo-50 p-4 rounded-full text-indigo-500">
+                <i data-lucide="file-text" class="w-12 h-12"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900">Reports Module</h3>
+            <p class="text-slate-500 max-w-md">Detailed PDF and CSV reports for auditors will be generated here.</p>
+            <button id="downloadSampleBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Download Month Sample</button>
+        </div>
+    </main>
+
+    <!-- Add Collection Modal -->
+    <div id="collectionModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="text-lg font-semibold text-slate-800">Add New Collection</h3>
+                <button id="closeCollectionModal" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <form id="collectionForm" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Date</label>
+                        <div class="relative">
+                            <input type="text" id="collectionDate" required placeholder="Select Date" class="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors" readonly>
+                            <i data-lucide="calendar" class="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Amount (₹)</label>
+                        <input type="number" id="collectionAmount" required min="0" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Collection Type</label>
+                    <div class="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                        <button type="button" id="collectionTypeMaintenance" class="flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-indigo-600 shadow-sm">
+                            Maintenance
+                        </button>
+                        <button type="button" id="collectionTypeCorpus" class="flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700">
+                            Corpus Fund
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Flat Number / Unit</label>
+                    <select id="collectionFlatNumber" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white">
+                        <option value="1A">1A</option>
+                        <option value="2A">2A</option>
+                        <option value="3A">3A</option>
+                        <option value="4A">4A</option>
+                        <option value="1B">1B</option>
+                        <option value="2B">2B</option>
+                        <option value="3B">3B</option>
+                        <option value="4B">4B</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Description (Optional)</label>
+                    <input type="text" id="collectionDescription" placeholder="e.g. November Maintenance" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Payment Mode</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="collectionPaymentMode" value="Online" checked class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Online</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="collectionPaymentMode" value="Cash" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Cash</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="collectionPaymentMode" value="Cheque" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Cheque</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/25">
+                        Record Collection
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Expense Modal -->
+    <div id="expenseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="text-lg font-semibold text-slate-800">Add New Expense</h3>
+                <button id="closeExpenseModal" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <form id="expenseForm" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Date</label>
+                        <div class="relative">
+                            <input type="text" id="expenseDate" required placeholder="Select Date" class="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors" readonly>
+                            <i data-lucide="calendar" class="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Amount (₹)</label>
+                        <input type="number" id="expenseAmount" required min="0" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Category</label>
+                    <select id="expenseCategory" required class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white">
+                        <option>Electricity</option>
+                        <option>Water Tanker</option>
+                        <option>Cleaning</option>
+                        <option>Security</option>
+                        <option>Repairs</option>
+                        <option>Gardening</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Description (Optional)</label>
+                    <input type="text" id="expenseDescription" placeholder="e.g. November Maintenance" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Deduct From</label>
+                    <div class="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                        <button type="button" id="expenseDeductionMaintenance" class="flex-1 py-1.5 text-sm font-medium rounded-md transition-all bg-white text-indigo-600 shadow-sm">
+                            Maintenance
+                        </button>
+                        <button type="button" id="expenseDeductionCorpus" class="flex-1 py-1.5 text-sm font-medium rounded-md transition-all text-slate-500 hover:text-slate-700">
+                            Corpus Fund
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Payment Mode</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="expensePaymentMode" value="Online" checked class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Online</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="expensePaymentMode" value="Cash" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Cash</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="expensePaymentMode" value="Cheque" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700">Cheque</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all bg-gradient-to-r from-rose-500 to-pink-500 shadow-rose-500/25">
+                        Record Expense
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Floating Action Button (Mobile Only) -->
+    <div class="md:hidden fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        <button id="mobileAddExpenseBtn" class="w-12 h-12 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 active:scale-95 transition-all">
+            <i data-lucide="receipt" class="w-5 h-5"></i>
+        </button>
+        <button id="mobileAddCollectionBtn" class="w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 active:scale-95 transition-all">
+            <i data-lucide="plus" class="w-7 h-7"></i>
+        </button>
+    </div>
+
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Flatpickr MonthSelect Plugin JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+    <!-- Server-provided configuration (from .env) -->
+    <script>
+        window.SERVER_ENV_CONFIG = <%- JSON.stringify(appConfig || {}) %>;
+    </script>
+    <!-- Configuration Files -->
+    <script src="/config/app-config.js"></script>
+    <script src="/config/flats-config.js"></script>
+    <script src="/config/ui-config.js"></script>
+    <!-- Main Application Script -->
+    <script src="/script.js"></script>
+    <script>
+        // Initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
+
+

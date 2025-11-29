@@ -1,15 +1,7 @@
 // Application Configuration
 const APP_CONFIG = {
-    // Maintenance Settings
-    DEFAULT_MAINTENANCE_PER_FLAT: 2000,
     TOTAL_FLATS: 8,
     
-    // Storage Keys
-    STORAGE_KEYS: {
-        EXPENSES: 'apartment_maintenance_expenses',
-        SETTINGS: 'apartment_maintenance_settings',
-        COLLECTIONS: 'apartment_maintenance_collections'
-    },
     
     // Currency Configuration
     CURRENCY: {

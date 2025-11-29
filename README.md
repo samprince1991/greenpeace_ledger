@@ -1,6 +1,6 @@
 # Apartment Maintenance Web App
 
-A simple, lightweight web application for tracking monthly maintenance expenses across 8 apartments using **localStorage** (browser-based storage) as the database.
+A web application for tracking monthly maintenance expenses across 8 apartments using **Express.js**, **EJS**, and **MySQL**.
 
 ## Features
 
@@ -9,45 +9,92 @@ A simple, lightweight web application for tracking monthly maintenance expenses 
 - ✅ Monthly summary dashboard showing total collected (maintenance), corpus, expenses, and balance
 - ✅ Separate collection lists for Maintenance and Corpus
 - ✅ Expense listing table for selected month
-- ✅ Monthly reports with summary and detailed breakdown
-- ✅ CSV export functionality
-- ✅ JSON export/import for data backup
 - ✅ Configurable maintenance amount per flat
 - ✅ Month selection using Flatpickr month picker
 - ✅ Flat names: 1A, 1B, 2A, 2B, 3A, 3B, 4A, 4B
-- ✅ Month format: "MonthName-YYYY" (e.g., "June-2025")
 - ✅ Mobile responsive design
-- ✅ Works offline - no server required!
-- ✅ No authentication needed
 
 ## Tech Stack
 
-- **Frontend**: HTML5, Vanilla JavaScript
+- **Backend**: Node.js, Express.js
+- **Frontend**: HTML5, Vanilla JavaScript, EJS
 - **Styling**: Tailwind CSS (CDN)
 - **Date Picker**: Flatpickr with MonthSelect Plugin
-- **Database**: Browser localStorage (file-based storage)
+- **Database**: MySQL
 
-## Quick Start
+## Prerequisites
 
-1. **Download the files** to your computer
-2. **Open `index.html`** in your web browser
-   - Double-click the file, or
-   - Right-click → Open with → Your preferred browser
-3. **Start using the app!** All data is stored locally in your browser
+- Node.js (v14 or higher)
+- MySQL (v5.7 or higher, or MariaDB)
+- npm or yarn
 
-That's it! No setup, no server, no configuration needed.
+## Setup Instructions
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Database Configuration
+
+Create a `.env` file in the project root with your database configuration:
+
+**Option 1: Using DATABASE_URL (recommended)**
+```env
+DATABASE_URL="mysql://username:password@host:port/database_name"
+PORT=3000
+```
+
+**Option 2: Using individual variables**
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=apartment_maintenance
+PORT=3000
+```
+
+### 3. Create Database Tables
+
+Run the SQL schema file to create the required tables:
+
+```bash
+mysql -u your_username -p < database-schema.sql
+```
+
+Or manually execute the SQL commands from `database-schema.sql` in your MySQL client.
+
+The schema will create:
+- `Setting` table - for storing app settings
+- `Expense` table - for storing expenses
+- `Collection` table - for storing collections
+
+### 4. Start the Server
+
+```bash
+npm start
+```
+
+Or for development with auto-reload:
+
+```bash
+npm run dev
+```
+
+The server will start on `http://localhost:3000` (or the port specified in your `.env` file).
 
 ## Usage
 
 ### Adding Collections
 
 1. Fill in the "Add Collection (Per Flat)" form:
-   - **Month**: Use the month picker (e.g., June-2025)
+   - **Month**: Use the month picker (e.g., 2025-06)
    - **Date**: Select the collection date
    - **Type**: Choose "Maintenance" or "Corpus Amount"
    - **Flat Number**: Select from 1A, 1B, 2A, 2B, 3A, 3B, 4A, 4B
    - **Amount**: Enter amount in ₹
-   - **Collected By**: Enter name of person who collected
    - **Payment Mode**: Select Cash/UPI/Bank
 2. Click **Add Collection**
 3. Collections are separated into Maintenance and Corpus sections
@@ -55,13 +102,13 @@ That's it! No setup, no server, no configuration needed.
 ### Adding Expenses
 
 1. Fill in the "Add New Expense" form:
-   - **Month**: Use the month picker (e.g., June-2025)
+   - **Month**: Use the month picker (e.g., 2025-06)
    - **Date**: Select the expense date
    - **Category**: Choose from dropdown
    - **Description**: Enter expense details
    - **Amount**: Enter amount in ₹
-   - **Paid By**: Enter name of person who paid
    - **Payment Mode**: Select Cash/UPI/Bank
+   - **Deduction Source**: Choose Maintenance or Corpus
 2. Click **Add Expense**
 3. The expense will be saved and appear in the expense list immediately
 
@@ -69,194 +116,103 @@ That's it! No setup, no server, no configuration needed.
 
 1. Use the month selector at the top (Flatpickr month picker)
 2. The dashboard will automatically show:
-   - **Total Collected**: Sum of Maintenance collections only
-   - **Total Corpus**: Sum of Corpus Amount collections (separate fund)
-   - **Total Expenses**: Sum of all expenses
-   - **Remaining Balance**: Maintenance - Expenses (corpus is not included in balance)
+   - **Current Balance**: All-time maintenance collections minus maintenance expenses
+   - **Maintenance Collected**: Sum of Maintenance collections for the month
+   - **Corpus Collected**: Sum of Corpus Amount collections for the month
+   - **Total Expenses**: Sum of all expenses for the month
+   - **Total Corpus Fund**: All-time corpus collections minus corpus expenses
 
-### Generating Reports
+## API Endpoints
 
-1. Go to the "Monthly Reports" section
-2. Select a month from the dropdown
-3. Click **Generate Monthly Report**
-4. View the summary and detailed expense table
-5. Click **Export to CSV** to download a CSV file
-
-### Updating Settings
-
-1. Go to the "Settings" section
-2. Enter the new monthly maintenance amount per flat
-3. Click **Save**
-4. The total collection will update automatically
-
-### Data Backup & Restore
-
-**Export Data (Backup):**
-1. Go to Settings section
-2. Click **Export Data (JSON)**
-3. A JSON file will be downloaded with all your expenses, collections, and settings
-4. Keep this file safe as a backup
-
-**Import Data (Restore):**
-1. Go to Settings section
-2. Click **Import Data (JSON)**
-3. Select your previously exported JSON file
-4. Your data will be restored and the page will refresh
-
-## How It Works
-
-### Data Storage
-
-The app uses **localStorage** - a built-in browser feature that stores data locally on your device. This means:
-
-- ✅ **No server required** - works completely offline
-- ✅ **Fast** - instant data access
-- ✅ **Private** - data stays on your device
-- ✅ **Persistent** - data survives browser restarts
-
-### Data Structure
-
-Data is stored in three localStorage keys:
-
-1. **`apartment_maintenance_expenses`**: Array of all expense records
-2. **`apartment_maintenance_settings`**: Settings object (maintenance amount, etc.)
-3. **`apartment_maintenance_collections`**: Array of all collection records
-
-Each expense record contains:
-```javascript
-{
-  id: "unique-id",
-  month: "June-2025",
-  date: "2025-06-15",
-  category: "Electricity",
-  description: "Monthly bill",
-  amount: 5000,
-  paidBy: "John",
-  paymentMode: "UPI",
-  createdAt: "2025-06-15T10:30:00.000Z"
-}
-```
-
-Each collection record contains:
-```javascript
-{
-  id: "unique-id",
-  month: "June-2025",
-  date: "2025-06-15",
-  type: "Maintenance", // or "Corpus Amount"
-  flatNumber: "1A",
-  amount: 2000,
-  collectedBy: "Jane",
-  paymentMode: "Cash",
-  createdAt: "2025-06-15T10:30:00.000Z"
-}
-```
+- `GET /api/health` - Health check
+- `GET /api/expenses?month=YYYY-MM` - Get expenses (optional month filter)
+- `POST /api/expenses` - Create expense
+- `DELETE /api/expenses/:id` - Delete expense
+- `GET /api/collections?month=YYYY-MM` - Get collections (optional month filter)
+- `POST /api/collections` - Create collection
+- `DELETE /api/collections/:id` - Delete collection
+- `GET /api/summary?month=YYYY-MM` - Get monthly summary
 
 ## File Structure
 
 ```
 ApartmentMaintanance/
-├── index.html          # Main HTML file with UI
-├── script.js           # Frontend JavaScript with localStorage logic
-└── README.md           # This file
+├── server.js              # Express server with API routes
+├── script.js             # Frontend JavaScript
+├── views/
+│   └── index.ejs         # Main HTML template
+├── config/
+│   ├── app-config.js     # Application configuration
+│   ├── ui-config.js      # UI configuration
+│   └── flats-config.js   # Flats configuration
+├── database-schema.sql    # Database schema
+├── package.json          # Dependencies
+└── README.md             # This file
 ```
 
-## Browser Compatibility
+## Database Schema
 
-- ✅ Modern browsers (Chrome, Firefox, Edge, Safari)
-- ✅ Mobile browsers (iOS Safari, Chrome Mobile)
-- ✅ Requires JavaScript enabled
-- ✅ Works on desktop and mobile devices
+### Expense Table
+- `id` (VARCHAR) - Unique identifier
+- `month` (VARCHAR) - Month in YYYY-MM format
+- `date` (VARCHAR) - Date in DD-MM-YYYY format
+- `category` (VARCHAR) - Expense category
+- `description` (TEXT) - Expense description
+- `amount` (FLOAT) - Expense amount
+- `paymentMode` (VARCHAR) - Payment mode
+- `paidBy` (VARCHAR) - Person who paid
+- `type` (VARCHAR) - Type (e.g., "expense")
+- `deductionSource` (VARCHAR) - "maintenance" or "corpus"
+- `subType` (VARCHAR) - For compatibility
+- `createdAt` (DATETIME)
 
-## Data Persistence
+### Collection Table
+- `id` (VARCHAR) - Unique identifier
+- `month` (VARCHAR) - Month in YYYY-MM format
+- `date` (VARCHAR) - Date in DD-MM-YYYY format
+- `type` (VARCHAR) - "Maintenance" or "Corpus"
+- `subType` (VARCHAR) - "maintenance" or "corpus"
+- `flatNumber` (VARCHAR) - Flat number (1A, 1B, etc.)
+- `category` (VARCHAR) - Category (usually same as flatNumber)
+- `amount` (FLOAT) - Collection amount
+- `paymentMode` (VARCHAR) - Payment mode
+- `collectedBy` (VARCHAR) - Person who collected
+- `createdAt` (DATETIME)
 
-- Data is stored in your browser's localStorage
-- Data persists across browser sessions
-- **Important**: If you clear browser data/cache, your data will be lost
-- **Solution**: Regularly export your data using the "Export Data (JSON)" feature
+## Environment Variables
 
-## Key Features Explained
-
-### Month Format
-- Uses "MonthName-YYYY" format (e.g., "June-2025")
-- Month selection via Flatpickr month picker
-- Easy to read and understand
-
-### Flat Names
-- Uses alphanumeric format: 1A, 1B, 2A, 2B, 3A, 3B, 4A, 4B
-- Total of 8 flats (4 floors × 2 flats per floor)
-
-### Collections
-- **Maintenance Collections**: Regular monthly maintenance payments
-- **Corpus Collections**: Separate fund for other works (not included in balance calculation)
-- Collections are displayed in separate tables for clarity
-
-### Balance Calculation
-- **Remaining Balance = Total Maintenance Collections - Total Expenses**
-- Corpus Amount is NOT included in balance (it's a separate fund)
-- Balance can be negative (red) if expenses exceed collections
-
-## Limitations & Notes
-
-### localStorage Limitations:
-- **Browser-specific**: Data is stored per browser/device
-- **Storage limit**: ~5-10MB per domain (plenty for this app)
-- **Not shared**: Data on one device/browser doesn't sync to others
-- **Can be cleared**: Clearing browser data will delete your data
-
-### If You Need Multi-Device Access:
-
-If you need to access your data from multiple devices or share it with others, you have a few options:
-
-1. **Use the Export/Import feature**: Export JSON on one device, import on another
-2. **Use a cloud storage service**: Store the exported JSON file in Google Drive/Dropbox
-3. **Deploy a simple backend**: Create a simple Node.js server with file-based storage
+- `DATABASE_URL` - MySQL connection string (optional, if not using individual vars)
+- `DB_HOST` - Database host (default: localhost)
+- `DB_PORT` - Database port (default: 3306)
+- `DB_USER` - Database user (default: root)
+- `DB_PASSWORD` - Database password
+- `DB_NAME` - Database name (default: apartment_maintenance)
+- `PORT` - Server port (default: 3000)
 
 ## Troubleshooting
 
-### Data Not Appearing
-- Check if JavaScript is enabled in your browser
-- Open browser console (F12) to check for errors
-- Try refreshing the page
-- Verify the month selector matches the month in your data
+### Database Connection Issues
+- Verify your MySQL server is running
+- Check your `.env` file has correct credentials
+- Ensure the database exists: `CREATE DATABASE apartment_maintenance;`
+- Run the schema file to create tables
 
-### Month Picker Not Working
-- Ensure you have internet connection (for Flatpickr CDN)
-- Check browser console (F12) for errors
-- Try clearing browser cache and reloading
+### Tables Don't Exist
+- Run `database-schema.sql` to create all required tables
+- Or manually create tables using the SQL commands in the schema file
 
-### Data Lost After Browser Update
-- localStorage data should persist, but if lost, restore from your JSON backup
-- Always keep regular backups using the Export feature
+### Server Won't Start
+- Check if port 3000 (or your configured port) is available
+- Verify all dependencies are installed: `npm install`
+- Check server logs for error messages
 
-### Export/Import Not Working
-- Make sure you're using a modern browser
-- Check browser console (F12) for errors
-- Try a different browser if issues persist
+## Security Notes
 
-### App Not Loading
-- Ensure you have internet connection (for Tailwind CSS and Flatpickr CDN)
-- Check browser console (F12) for errors
-- Try clearing browser cache and reloading
+- Never commit your `.env` file to version control
+- Use strong database passwords
+- Consider using environment-specific configurations for production
+- Keep your dependencies updated
 
-## Security Note
+## License
 
-- All data is stored locally in your browser
-- No data is sent to any server (except CDN for styling and date picker)
-- Your data is completely private and secure
-- For sensitive data, consider using browser's private/incognito mode with caution (data may be cleared)
-
-## Support
-
-If you encounter issues:
-1. Check the browser console (F12) for errors
-2. Try exporting your data as backup
-3. Clear browser cache and reload
-4. Try a different browser
-
-## Credits
-
-- **Tailwind CSS**: For styling
-- **Flatpickr**: For month selection
-- Built with vanilla JavaScript for simplicity and performance
-
+MIT
