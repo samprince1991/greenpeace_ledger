@@ -293,6 +293,11 @@ function switchTab(tabName) {
     const activeView = document.getElementById(`${tabName}View`);
     if (activeView) {
         activeView.classList.remove('view-hidden');
+        
+        // Initialize icons when switching to reports tab
+        if (tabName === UI_CONFIG.TABS.REPORTS && typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     }
     
     // Update navigation buttons
@@ -919,6 +924,325 @@ async function updateReports() {
             }
         }
     }
+}
+
+async function printReportAsPDF() {
+    const reportsView = document.getElementById('reportsView');
+    if (!reportsView) {
+        showNotification('Report view not found.', UI_CONFIG.NOTIFICATION.TYPES.ERROR);
+        return;
+    }
+    
+    // Get the month for the report
+    const monthKey = reportsMonth || currentMonth;
+    const monthFormatted = monthKey ? convertMonthFormat(monthKey) : 'Unknown Month';
+    
+    // Create a new window for printing with selectable text
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+        showNotification('Please allow popups to print the report.', UI_CONFIG.NOTIFICATION.TYPES.ERROR);
+        return;
+    }
+    
+    // Temporarily show the reports view to ensure content is rendered
+    const wasHidden = reportsView.classList.contains('view-hidden');
+    if (wasHidden) {
+        reportsView.classList.remove('view-hidden');
+    }
+    
+    // Wait a bit for content to render
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Clone the entire reports view content
+    const reportsContent = reportsView.cloneNode(true);
+    
+    // Restore original visibility state
+    if (wasHidden) {
+        reportsView.classList.add('view-hidden');
+    }
+    
+    // Remove the header section with buttons
+    const headerSection = reportsContent.querySelector('.flex.flex-col.sm\\:flex-row');
+    if (headerSection) {
+        headerSection.remove();
+    }
+    
+    // Remove elements that shouldn't be printed
+    const noPrintElements = reportsContent.querySelectorAll('.no-print, button, input, nav, [data-lucide]');
+    noPrintElements.forEach(el => {
+        if (el) el.remove();
+    });
+    
+    // Get all content sections
+    let balanceSummary = null;
+    let collectionsGrid = null;
+    
+    // Iterate through all children to find the sections
+    for (let i = 0; i < reportsContent.children.length; i++) {
+        const child = reportsContent.children[i];
+        if (!child || child.tagName !== 'DIV') continue;
+        const classes = child.className || '';
+        
+        // Find balance summary (has bg-white, rounded-2xl, shadow-lg, p-4)
+        if (!balanceSummary && classes.includes('bg-white') && classes.includes('rounded-2xl') && classes.includes('shadow-lg') && classes.includes('p-4')) {
+            balanceSummary = child;
+        }
+        // Find collections grid (has grid, grid-cols-1)
+        if (!collectionsGrid && classes.includes('grid') && classes.includes('grid-cols-1')) {
+            collectionsGrid = child;
+        }
+        if (balanceSummary && collectionsGrid) break;
+    }
+    
+    // Build HTML content for print window
+    let printHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Report - ${monthFormatted}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: white;
+            color: #1e293b;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .print-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #1e293b;
+        }
+        .print-header h1 {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+        .print-header p {
+            font-size: 14px;
+            color: #64748b;
+            margin: 2px 0;
+        }
+        .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #1e293b;
+        }
+        .balance-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .balance-item {
+            padding: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+        .balance-label {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .balance-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1e293b;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+        th {
+            background-color: #f1f5f9;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        td {
+            padding: 10px 8px;
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+        }
+        tfoot td {
+            background-color: #f8fafc;
+            font-weight: 600;
+        }
+        .table-section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        .table-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+        .table-section-subtitle {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+        @media print {
+            body {
+                padding: 15px;
+            }
+            .section {
+                page-break-inside: avoid;
+            }
+            table {
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-header">
+        <h1>Monthly Report</h1>
+        <p>${monthFormatted}</p>
+        <p>Greenpeace Willowbrook</p>
+    </div>
+`;
+    
+    // Add balance summary
+    if (balanceSummary) {
+        printHTML += '<div class="section"><div class="section-title">Balance Summary</div>';
+        
+        // Extract balance data
+        const maintenanceCollections = balanceSummary.querySelector('#totalMaintenanceCollectionsAmount')?.textContent || '₹0';
+        const maintenanceExpenses = balanceSummary.querySelector('#totalMaintenanceExpensesAmount')?.textContent || '₹0';
+        const maintenancePrevBalance = balanceSummary.querySelector('#maintenancePreviousBalanceAmount')?.textContent || '₹0';
+        const maintenanceBalance = balanceSummary.querySelector('#balanceAmount')?.textContent || '₹0';
+        const corpusCollections = balanceSummary.querySelector('#totalCorpusCollectionsAmount')?.textContent || '₹0';
+        const corpusExpenses = balanceSummary.querySelector('#totalCorpusExpensesAmount')?.textContent || '₹0';
+        const corpusPrevBalance = balanceSummary.querySelector('#corpusPreviousBalanceAmount')?.textContent || '₹0';
+        const corpusBalance = balanceSummary.querySelector('#corpusBalanceAmount')?.textContent || '₹0';
+        
+        printHTML += `
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #475569;">MAINTENANCE</div>
+                <div class="balance-grid">
+                    <div class="balance-item">
+                        <div class="balance-label">Collections</div>
+                        <div class="balance-value">${maintenanceCollections}</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-label">Expenses</div>
+                        <div class="balance-value" style="color: #dc2626;">${maintenanceExpenses}</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-label">Prev Month Balance</div>
+                        <div class="balance-value">${maintenancePrevBalance}</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-label">Balance</div>
+                        <div class="balance-value">${maintenanceBalance}</div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #475569;">CORPUS</div>
+                <div class="balance-grid">
+                    <div class="balance-item">
+                        <div class="balance-label">Collections</div>
+                        <div class="balance-value">${corpusCollections}</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-label">Expenses</div>
+                        <div class="balance-value" style="color: #dc2626;">${corpusExpenses}</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-label">Prev Month Balance</div>
+                        <div class="balance-value">${corpusPrevBalance}</div>
+                    </div>
+                    <div class="balance-item">
+                        <div class="balance-label">Balance</div>
+                        <div class="balance-value">${corpusBalance}</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+    
+    // Add collections and expenses tables
+    if (collectionsGrid) {
+        const sections = Array.from(collectionsGrid.children);
+        
+        sections.forEach(section => {
+            if (!section || section.tagName !== 'DIV') return;
+            
+            const titleElement = section.querySelector('h3');
+            const subtitleElement = section.querySelector('p');
+            const table = section.querySelector('table');
+            
+            if (titleElement && table) {
+                const title = titleElement.textContent || '';
+                const subtitle = subtitleElement?.textContent || '';
+                
+                printHTML += `
+                    <div class="table-section">
+                        <div class="table-section-title">${title}</div>
+                        ${subtitle ? `<div class="table-section-subtitle">${subtitle}</div>` : ''}
+                `;
+                
+                // Convert table to HTML
+                const tableHTML = table.outerHTML;
+                printHTML += tableHTML + '</div>';
+            }
+        });
+    }
+    
+    printHTML += `
+</body>
+</html>`;
+    
+    // Write content to print window
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+    
+    // Wait for content to load, then print
+    printWindow.addEventListener('load', function() {
+        setTimeout(() => {
+            printWindow.print();
+        }, 250);
+    });
+    
+    // Also try immediate print if window is already loaded
+    setTimeout(() => {
+        if (printWindow.document.readyState === 'complete') {
+            printWindow.print();
+        }
+    }, 500);
+    
+    showNotification('Opening print dialog...', UI_CONFIG.NOTIFICATION.TYPES.SUCCESS);
 }
 
 async function updateRecentActivity() {
@@ -1707,4 +2031,7 @@ function setupEventListeners() {
     document.getElementById('downloadSampleBtn')?.addEventListener('click', function() {
         showNotification('Report generation feature coming soon!');
     });
+    
+    // Print report button
+    document.getElementById('printReportBtn')?.addEventListener('click', printReportAsPDF);
 }

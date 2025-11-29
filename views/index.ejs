@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <!-- Flatpickr MonthSelect Plugin CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <!-- html2pdf.js for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         .notification {
             transition: opacity 0.3s ease-in-out;
@@ -21,6 +23,33 @@
         }
         .view-hidden {
             display: none !important;
+        }
+        /* Print-specific styles for mobile-friendly PDF */
+        @media print {
+            body {
+                background: white;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        .print-container {
+            max-width: 100%;
+            padding: 20px;
+            background: white;
+        }
+        .print-container table {
+            width: 100%;
+            font-size: 12px;
+        }
+        .print-container th,
+        .print-container td {
+            padding: 8px 4px;
+            text-align: left;
+        }
+        .print-container th {
+            background-color: #f1f5f9;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -382,6 +411,10 @@
                         <input type="text" id="monthSelectorReports" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer w-32">
                         <button id="nextMonthReports" class="p-1 hover:bg-slate-100 rounded">→</button>
                     </div>
+                    <button id="printReportBtn" class="no-print flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+                        <i data-lucide="printer" class="w-[18px] h-[18px]"></i>
+                        <span class="hidden sm:inline">Print PDF</span>
+                    </button>
                 </div>
             </div>
 
