@@ -2353,7 +2353,8 @@ async function handleAddCollection(e) {
     const description = document.getElementById('collectionDescription').value;
     const paymentMode = document.querySelector('input[name="collectionPaymentMode"]:checked').value;
     
-    if (!dateValue || !amount || !flatNumber || !paymentMode) {
+    // Allow empty flatNumber for general/previous balance entries
+    if (!dateValue || !amount || !paymentMode) {
         showNotification('Please fill in all required fields.', 'error');
         return;
     }
