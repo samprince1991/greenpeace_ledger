@@ -12,6 +12,7 @@ const expenseRoutes = require('./routes/expenses');
 const collectionRoutes = require('./routes/collections');
 const summaryRoutes = require('./routes/summary');
 const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 
 // Import middleware
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
@@ -49,6 +50,7 @@ app.use('/config', express.static(path.join(__dirname, 'config')));
 
 // Routes
 app.use('/auth', authRoutes);
+app.use('/admin', adminRoutes);
 app.use('/', indexRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/expenses', expenseRoutes);

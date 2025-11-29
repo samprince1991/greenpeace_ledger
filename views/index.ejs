@@ -57,6 +57,14 @@
                     <span>Reports</span>
                 </button>
                 <% } %>
+                <% if (typeof user !== 'undefined' && user && user.roleName === 'Admin') { %>
+                <div class="pl-4 border-l border-slate-700">
+                    <a href="/admin/users" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800" title="Admin Panel">
+                        <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
+                        <span>Admin</span>
+                    </a>
+                </div>
+                <% } %>
             </div>
 
             <!-- Right Side: Profile & Mobile Toggle -->
@@ -114,6 +122,12 @@
                     <i data-lucide="file-text" class="w-5 h-5"></i>
                     <span>Reports</span>
                 </button>
+                <% } %>
+                <% if (typeof user !== 'undefined' && user && user.roleName === 'Admin') { %>
+                <a href="/admin/users" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span>Admin</span>
+                </a>
                 <% } %>
             </div>
             
