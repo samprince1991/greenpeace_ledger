@@ -18,7 +18,6 @@ let expenseDeductionSource = APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE; // '
 
 // Chart instances
 let monthlyTrendsChart = null;
-let collectionsBreakdownChart = null;
 let expenseCategoriesChart = null;
 let incomeExpensesChart = null;
 
@@ -1285,7 +1284,6 @@ async function updateCharts() {
     }
     
     await updateMonthlyTrendsChart();
-    await updateCollectionsBreakdownChart();
     await updateExpenseCategoriesChart();
     await updateIncomeExpensesChart();
 }
@@ -1387,68 +1385,6 @@ async function updateMonthlyTrendsChart() {
     });
 }
 
-// Update Collections Breakdown Chart
-async function updateCollectionsBreakdownChart() {
-    const canvas = document.getElementById('collectionsBreakdownChart');
-    if (!canvas) return;
-    
-    const allCollections = await getAllCollections();
-    
-    const maintenance = allCollections
-        .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
-                    c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
-        .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
-    
-    const corpus = allCollections
-        .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
-                    c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
-        .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
-    
-    const ctx = canvas.getContext('2d');
-    
-    if (collectionsBreakdownChart) {
-        collectionsBreakdownChart.destroy();
-    }
-    
-    collectionsBreakdownChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Maintenance', 'Corpus Fund'],
-            datasets: [{
-                data: [maintenance, corpus],
-                backgroundColor: [
-                    'rgba(16, 185, 129, 0.8)',
-                    'rgba(245, 158, 11, 0.8)'
-                ],
-                borderColor: [
-                    'rgb(16, 185, 129)',
-                    'rgb(245, 158, 11)'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = formatCurrency(context.parsed);
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.parsed / total) * 100).toFixed(1);
-                            return label + ': ' + value + ' (' + percentage + '%)';
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
 
 // Update Expense Categories Chart
 async function updateExpenseCategoriesChart() {
@@ -1519,7 +1455,7 @@ async function updateExpenseCategoriesChart() {
     });
 }
 
-// Update Income vs Expenses Chart
+// Update Income vs Expenses Chart (Maintenance only)
 async function updateIncomeExpensesChart() {
     const canvas = document.getElementById('incomeExpensesChart');
     if (!canvas) return;
@@ -1532,11 +1468,24 @@ async function updateIncomeExpensesChart() {
         const collections = await getCollectionsByMonth(month.key);
         const expenses = await getExpensesByMonth(month.key);
         
-        const totalIncome = collections.reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
-        const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+        // Only count maintenance collections
+        const maintenanceIncome = collections
+            .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
+                        c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
+            .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
         
-        incomeData.push(totalIncome);
-        expenseData.push(totalExpenses);
+        // Only count maintenance expenses (not corpus expenses)
+        const maintenanceExpenses = expenses
+            .filter(exp => {
+                const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
+                                exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
+                                exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
+                return !isCorpus;
+            })
+            .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+        
+        incomeData.push(maintenanceIncome);
+        expenseData.push(maintenanceExpenses);
     }
     
     const ctx = canvas.getContext('2d');
@@ -1551,14 +1500,14 @@ async function updateIncomeExpensesChart() {
             labels: months.map(m => m.name),
             datasets: [
                 {
-                    label: 'Income',
+                    label: 'Maintenance Income',
                     data: incomeData,
                     backgroundColor: 'rgba(16, 185, 129, 0.8)',
                     borderColor: 'rgb(16, 185, 129)',
                     borderWidth: 1
                 },
                 {
-                    label: 'Expenses',
+                    label: 'Maintenance Expenses',
                     data: expenseData,
                     backgroundColor: 'rgba(239, 68, 68, 0.8)',
                     borderColor: 'rgb(239, 68, 68)',
