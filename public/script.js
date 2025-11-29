@@ -619,12 +619,11 @@ async function updateHousesSummary() {
 }
 
 async function updateReports() {
-    const maintenanceCollectionsTbody = document.getElementById('maintenanceCollectionsTableBody');
-    const corpusCollectionsTbody = document.getElementById('corpusCollectionsTableBody');
+    const combinedCollectionsTbody = document.getElementById('combinedCollectionsTableBody');
     const maintenanceExpensesTbody = document.getElementById('maintenanceExpensesTableBody');
     const corpusExpensesTbody = document.getElementById('corpusExpensesTableBody');
     
-    if (!maintenanceCollectionsTbody || !corpusCollectionsTbody || !maintenanceExpensesTbody || !corpusExpensesTbody) return;
+    if (!combinedCollectionsTbody || !maintenanceExpensesTbody || !corpusExpensesTbody) return;
     
     // Get collections and expenses for selected month
     const monthKey = reportsMonth || currentMonth;
@@ -695,36 +694,27 @@ async function updateReports() {
         }
     });
     
-    // Generate HTML for Maintenance Collections table
+    // Generate HTML for Combined Collections table
     if (flats.length === 0) {
-        maintenanceCollectionsTbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+        combinedCollectionsTbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
     } else {
-        maintenanceCollectionsTbody.innerHTML = flats.map(flat => {
-            const amount = maintenanceCollectionsData[flat] || 0;
+        // Create one row per flat with Maintenance and Corpus as columns
+        combinedCollectionsTbody.innerHTML = flats.map(flat => {
+            const maintenanceAmount = maintenanceCollectionsData[flat] || 0;
+            const corpusAmount = corpusCollectionsData[flat] || 0;
+            const totalAmount = maintenanceAmount + corpusAmount;
             
             return `
                 <tr class="hover:bg-slate-50/80 transition-colors">
                     <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
-                    <td class="px-6 py-4 text-right font-semibold ${amount > 0 ? 'text-emerald-600' : 'text-slate-400'}">
-                        ${formatCurrency(amount)}
+                    <td class="px-6 py-4 text-right font-semibold ${maintenanceAmount > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                        ${formatCurrency(maintenanceAmount)}
                     </td>
-                </tr>
-            `;
-        }).join('');
-    }
-    
-    // Generate HTML for Corpus Collections table
-    if (flats.length === 0) {
-        corpusCollectionsTbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
-    } else {
-        corpusCollectionsTbody.innerHTML = flats.map(flat => {
-            const amount = corpusCollectionsData[flat] || 0;
-            
-            return `
-                <tr class="hover:bg-slate-50/80 transition-colors">
-                    <td class="px-6 py-4 font-medium text-slate-900">${flat}</td>
-                    <td class="px-6 py-4 text-right font-semibold ${amount > 0 ? 'text-amber-600' : 'text-slate-400'}">
-                        ${formatCurrency(amount)}
+                    <td class="px-6 py-4 text-right font-semibold ${corpusAmount > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                        ${formatCurrency(corpusAmount)}
+                    </td>
+                    <td class="px-6 py-4 text-right font-bold ${totalAmount > 0 ? 'text-slate-900' : 'text-slate-400'}">
+                        ${formatCurrency(totalAmount)}
                     </td>
                 </tr>
             `;
@@ -769,12 +759,15 @@ async function updateReports() {
         }).join('');
     }
     
-    // Update totals for Collections
+    // Update totals for Combined Collections
+    const totalCombinedCollections = totalMaintenanceCollections + totalCorpusCollections;
     const totalMaintenanceCollectionsEl = document.getElementById('totalMaintenanceCollections');
     const totalCorpusCollectionsEl = document.getElementById('totalCorpusCollections');
+    const totalCombinedCollectionsEl = document.getElementById('totalCombinedCollections');
     
     if (totalMaintenanceCollectionsEl) totalMaintenanceCollectionsEl.textContent = formatCurrency(totalMaintenanceCollections);
     if (totalCorpusCollectionsEl) totalCorpusCollectionsEl.textContent = formatCurrency(totalCorpusCollections);
+    if (totalCombinedCollectionsEl) totalCombinedCollectionsEl.textContent = formatCurrency(totalCombinedCollections);
     
     // Update totals for Expenses
     const totalMaintenanceExpensesEl = document.getElementById('totalMaintenanceExpenses');
