@@ -50,17 +50,21 @@
             <!-- Right Side: Profile & Mobile Toggle -->
             <div class="flex items-center gap-4">
                 <!-- User Profile (Desktop) -->
-                <div class="hidden md:flex items-center gap-3 pl-4 border-l border-slate-700">
-                    <div class="text-right hidden lg:block">
-                        <p class="text-sm font-medium text-white"><%= user.username %></p>
-                        <p class="text-xs text-slate-500"><%= user.roleName %></p>
-                    </div>
-                    <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-600">
+                <div class="hidden md:flex items-center pl-4 relative">
+                    <button id="profileDropdownBtn" class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-600 hover:bg-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-500" title="Profile Menu">
                         <%= user.username ? user.username.substring(0, 2).toUpperCase() : 'U' %>
+                    </button>
+                    <!-- Profile Dropdown Menu -->
+                    <div id="profileDropdown" class="hidden absolute right-0 top-full mt-2 w-48 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden z-50">
+                        <div class="px-4 py-3 border-b border-slate-700">
+                            <p class="text-sm font-medium text-white"><%= user.username %></p>
+                            <p class="text-xs text-slate-400"><%= user.roleName %></p>
+                        </div>
+                        <a href="/auth/logout" class="flex items-center gap-2 px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                            <span>Logout</span>
+                        </a>
                     </div>
-                    <a href="/auth/logout" class="ml-2 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors" title="Logout">
-                        <i data-lucide="log-out" class="w-5 h-5"></i>
-                    </a>
                 </div>
 
                 <!-- Mobile Menu Button -->
@@ -311,6 +315,37 @@
             lucide.createIcons();
         }
         loadUsers();
+        
+        // Profile dropdown toggle
+        (function() {
+            const profileBtn = document.getElementById('profileDropdownBtn');
+            const profileDropdown = document.getElementById('profileDropdown');
+            
+            if (profileBtn && profileDropdown) {
+                // Toggle dropdown on button click
+                profileBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const isHidden = profileDropdown.classList.toggle('hidden');
+                    if (!isHidden && typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+                        profileDropdown.classList.add('hidden');
+                    }
+                });
+                
+                // Close dropdown on escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        profileDropdown.classList.add('hidden');
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>
