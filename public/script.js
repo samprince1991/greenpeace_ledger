@@ -306,6 +306,14 @@ function switchCollectionsSubTab(subTabName) {
             monthlyBtn.className = 'collections-subtab flex-1 px-6 py-4 text-sm font-semibold text-slate-700 bg-white border-b-2 border-indigo-600 transition-all relative -mb-px';
         }
         // Month filter is already inside the monthly tab content, so it will show automatically
+    } else if (subTabName === 'yearly') {
+        const yearlyContent = document.getElementById('collectionsTabYearlyContent');
+        const yearlyBtn = document.getElementById('collectionsTabYearly');
+        if (yearlyContent) yearlyContent.classList.remove('hidden');
+        if (yearlyBtn) {
+            yearlyBtn.className = 'collections-subtab flex-1 px-6 py-4 text-sm font-semibold text-slate-700 bg-white border-b-2 border-indigo-600 transition-all relative -mb-px';
+        }
+        updateYearlyHouseBreakdown();
     } else if (subTabName === 'allTime') {
         const allTimeContent = document.getElementById('collectionsTabAllTimeContent');
         const allTimeBtn = document.getElementById('collectionsTabAllTime');
@@ -375,6 +383,7 @@ function switchTab(tabName) {
         }
         displayCollectionsTable();
         updateAllTimeHouseTotals();
+        updateYearlyHouseBreakdown();
         // Default to monthly tab and show month filter
         switchCollectionsSubTab('monthly');
     } else if (tabName === UI_CONFIG.TABS.EXPENSES) {
@@ -616,6 +625,118 @@ async function updateHousesSummary() {
             </tr>
         `;
     }).join('');
+}
+
+async function updateYearlyHouseBreakdown() {
+    const tbody = document.getElementById('yearlyHouseTotalsBody');
+    const headerRow = document.getElementById('yearlyTableHeader');
+    const footerRow = document.getElementById('yearlyTableFooter');
+    const grandTotalEl = document.getElementById('yearlyGrandTotal');
+    
+    if (!tbody || !headerRow || !footerRow || !grandTotalEl) return;
+    
+    // Get all collections
+    const allCollections = await getAllCollections();
+    
+    // Get flats from config
+    const flats = FLATS_CONFIG.FLATS;
+    
+    // Generate last 12 months (most recent first)
+    const months = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = APP_CONFIG.MONTH_NAMES[date.getMonth()].substring(0, 3);
+        const year = date.getFullYear();
+        months.push({
+            key: monthKey,
+            label: `${monthName} ${year}`
+        });
+    }
+    
+    // Clear existing month headers (if any) and insert new ones before the Total column
+    const totalHeader = headerRow.querySelector('th:last-child');
+    const existingMonthHeaders = headerRow.querySelectorAll('th:not(:first-child):not(:last-child)');
+    existingMonthHeaders.forEach(th => th.remove());
+    
+    months.forEach(m => {
+        const th = document.createElement('th');
+        th.className = 'px-3 py-3 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider whitespace-nowrap';
+        th.textContent = m.label;
+        if (totalHeader) {
+            totalHeader.insertAdjacentElement('beforebegin', th);
+        }
+    });
+    
+    // Calculate collections per house per month
+    const flatData = {};
+    const monthTotals = new Array(12).fill(0);
+    let grandTotal = 0;
+    
+    flats.forEach(flat => {
+        const flatCollections = allCollections.filter(c => (c.flatNumber || c.category) === flat);
+        const monthlyAmounts = months.map((month, index) => {
+            const monthCollections = flatCollections.filter(c => c.month === month.key);
+            const total = monthCollections.reduce((sum, c) => {
+                const amount = parseFloat(c.amount || 0);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+            monthTotals[index] += total;
+            grandTotal += total;
+            return total;
+        });
+        
+        const flatTotal = monthlyAmounts.reduce((sum, amt) => sum + amt, 0);
+        
+        flatData[flat] = {
+            monthlyAmounts: monthlyAmounts,
+            total: flatTotal
+        };
+    });
+    
+    // Generate table rows
+    if (flats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="14" class="px-6 py-8 text-center text-slate-400">No flats found.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = flats.map(flat => {
+        const data = flatData[flat];
+        const cells = data.monthlyAmounts.map((amount, index) => {
+            const hasPayment = amount > 0;
+            return `
+                <td class="px-3 py-3 text-center text-sm ${hasPayment ? 'text-emerald-600 font-semibold' : 'text-slate-400'}">
+                    ${formatCurrency(amount)}
+                </td>
+            `;
+        }).join('');
+        
+        return `
+            <tr class="hover:bg-slate-50/80 transition-colors group">
+                <td class="px-4 py-3 font-medium text-slate-900 sticky left-0 bg-white z-10 border-r border-slate-200 group-hover:bg-slate-50/80">${flat}</td>
+                ${cells}
+                <td class="px-4 py-3 text-right font-bold text-slate-900">${formatCurrency(data.total)}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Clear existing month totals (if any) and insert new ones before the Grand Total column
+    const grandTotalCell = footerRow.querySelector('td:last-child');
+    const existingMonthTotals = footerRow.querySelectorAll('td:not(:first-child):not(:last-child)');
+    existingMonthTotals.forEach(td => td.remove());
+    
+    monthTotals.forEach(total => {
+        const td = document.createElement('td');
+        td.className = 'px-3 py-4 text-center text-slate-900 font-semibold';
+        td.textContent = formatCurrency(total);
+        if (grandTotalCell) {
+            grandTotalCell.insertAdjacentElement('beforebegin', td);
+        }
+    });
+    
+    // Update grand total
+    grandTotalEl.textContent = formatCurrency(grandTotal);
 }
 
 async function updateAllTimeHouseTotals() {
@@ -2020,6 +2141,7 @@ async function handleDeleteCollection(id) {
         showNotification('Collection deleted successfully!');
         await displayCollectionsTable();
         await updateAllTimeHouseTotals();
+        await updateYearlyHouseBreakdown();
         await updateDashboard();
     } else {
         showNotification('Error deleting collection: ' + (result.error || 'Unknown error'), 'error');
@@ -2149,6 +2271,7 @@ async function handleAddCollection(e) {
         // Force refresh dashboard and collections to show updated stats
         await displayCollectionsTable();
         await updateAllTimeHouseTotals();
+        await updateYearlyHouseBreakdown();
         await updateDashboard();
     } else {
         showNotification('Error adding collection: ' + (result.error || 'Unknown error'), 'error');
@@ -2460,6 +2583,7 @@ function setupEventListeners() {
     
     // Collections sub-tab switching
     document.getElementById('collectionsTabMonthly')?.addEventListener('click', () => switchCollectionsSubTab('monthly'));
+    document.getElementById('collectionsTabYearly')?.addEventListener('click', () => switchCollectionsSubTab('yearly'));
     document.getElementById('collectionsTabAllTime')?.addEventListener('click', () => switchCollectionsSubTab('allTime'));
     
     // Month navigation (Expenses)
