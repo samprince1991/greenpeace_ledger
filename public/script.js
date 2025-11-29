@@ -463,50 +463,6 @@ function closeMobileMenu() {
 // ============================================
 
 async function updateDashboard() {
-    const monthKey = currentMonth;
-    const expenses = await getExpensesByMonth(monthKey);
-    const collections = await getCollectionsByMonth(monthKey);
-    
-    // Calculate monthly stats (for this month)
-    const maintenanceIncome = collections
-        .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
-                    c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
-        .reduce((sum, c) => {
-            const amount = parseFloat(c.amount || 0);
-            return sum + (isNaN(amount) ? 0 : amount);
-        }, 0);
-    
-    const corpusIncome = collections
-        .filter(c => {
-            const isCorpus = c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
-                           c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
-            return isCorpus;
-        })
-        .reduce((sum, c) => {
-            const amount = parseFloat(c.amount || 0);
-            return sum + (isNaN(amount) ? 0 : amount);
-        }, 0);
-    
-    // Separate expenses by deduction source
-    const maintenanceExpenses = expenses.filter(exp => {
-        const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
-                        exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
-                        exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
-        return !isCorpus;
-    });
-    
-    const corpusExpenses = expenses.filter(exp => {
-        const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
-                        exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
-                        exp.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
-        return isCorpus;
-    });
-    
-    const totalExpense = expenses.reduce((sum, exp) => {
-        const amount = parseFloat(exp.amount || 0);
-        return sum + (isNaN(amount) ? 0 : amount);
-    }, 0);
-    
     // Calculate all-time stats for Current Balance
     const allCollections = await getAllCollections();
     const allExpenses = await getAllExpenses();
@@ -553,9 +509,6 @@ async function updateDashboard() {
     
     // Update stat cards
     document.getElementById('currentBalance').textContent = formatCurrency(balance);
-    document.getElementById('maintenanceCollected').textContent = formatCurrency(maintenanceIncome);
-    document.getElementById('corpusCollected').textContent = formatCurrency(corpusIncome);
-    document.getElementById('totalExpenses').textContent = formatCurrency(totalExpense);
     document.getElementById('totalCorpusFund').textContent = formatCurrency(corpusFundBalance);
     
     // Update recent activity
@@ -1284,7 +1237,6 @@ async function updateCharts() {
     }
     
     await updateMonthlyTrendsChart();
-    await updateExpenseCategoriesChart();
     await updateIncomeExpensesChart();
 }
 
@@ -1957,42 +1909,6 @@ async function handleAddCollection(e) {
 // Month Navigation
 // ============================================
 
-function updateMonthSelector() {
-    const monthInput = document.getElementById('monthSelector');
-    if (monthInput) {
-        monthInput.value = currentMonth;
-    }
-}
-
-function changeMonth(direction) {
-    if (monthSelectorPicker) {
-        const currentDate = monthSelectorPicker.selectedDates[0] || new Date();
-        const newDate = new Date(currentDate);
-        
-        if (direction === 'prev') {
-            newDate.setMonth(newDate.getMonth() - 1);
-        } else {
-            newDate.setMonth(newDate.getMonth() + 1);
-        }
-        
-        monthSelectorPicker.setDate(newDate, true);
-    } else {
-        // Fallback if Flatpickr not initialized
-        const [year, month] = currentMonth.split('-').map(Number);
-        const date = new Date(year, month - 1, 1);
-        
-        if (direction === 'prev') {
-            date.setMonth(date.getMonth() - 1);
-        } else {
-            date.setMonth(date.getMonth() + 1);
-        }
-        
-        currentMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        currentMonthFormatted = convertMonthFormat(currentMonth);
-        updateMonthSelector();
-        updateDashboard();
-    }
-}
 
 function changeCollectionsMonth(direction) {
     if (collectionsMonthPicker) {
@@ -2094,7 +2010,6 @@ function changeReportsMonth(direction) {
 // Flatpickr Initialization
 // ============================================
 
-let monthSelectorPicker = null;
 let collectionsMonthPicker = null;
 let expensesMonthPicker = null;
 let reportsMonthPicker = null;
@@ -2106,35 +2021,6 @@ function initializeFlatpickr() {
     if (typeof flatpickr === 'undefined') {
         console.warn('Flatpickr not loaded');
         return;
-    }
-    
-    // Initialize month selector with monthSelectPlugin
-    const monthSelectorInput = document.getElementById('monthSelector');
-    if (monthSelectorInput && typeof monthSelectPlugin !== 'undefined') {
-        const now = new Date();
-        const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        
-        monthSelectorPicker = flatpickr(monthSelectorInput, {
-            plugins: [new monthSelectPlugin({
-                shorthand: false,
-                dateFormat: "F Y",
-                altFormat: "F Y"
-            })],
-            dateFormat: APP_CONFIG.DATE_FORMATS.MONTH_SELECTOR.replace('YYYY', 'Y').replace('MM', 'm'),
-            defaultDate: now,
-            onChange: async function(selectedDates, dateStr, instance) {
-                if (selectedDates.length > 0) {
-                    const date = selectedDates[0];
-                    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    currentMonth = month;
-                    currentMonthFormatted = convertMonthFormat(month);
-                    await updateDashboard();
-                }
-            }
-        });
-        
-        // Set initial value
-        monthSelectorInput.value = monthSelectorPicker.input.value;
     }
     
     // Initialize collection date picker
@@ -2239,13 +2125,6 @@ function initializeFlatpickr() {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async function() {
-    // Set current month
-    const now = new Date();
-    currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    currentMonthFormatted = convertMonthFormat(currentMonth);
-    
-    // Initialize month selector
-    updateMonthSelector();
     
     // Initialize Flatpickr (this will set default dates)
     initializeFlatpickr();
@@ -2323,9 +2202,7 @@ function setupEventListeners() {
     document.getElementById('expenseForm')?.addEventListener('submit', handleAddExpense);
     
     // Month navigation (Dashboard)
-    document.getElementById('prevMonth')?.addEventListener('click', () => changeMonth('prev'));
-    document.getElementById('nextMonth')?.addEventListener('click', () => changeMonth('next'));
-    // Month selector change is handled by Flatpickr's onChange callback
+// Month selector change is handled by Flatpickr's onChange callback
     
     // Month navigation (Collections)
     document.getElementById('prevMonthCollections')?.addEventListener('click', () => changeCollectionsMonth('prev'));

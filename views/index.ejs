@@ -202,16 +202,11 @@
     <main class="flex-1 w-full max-w-7xl mx-auto pt-24 px-4 pb-4 md:px-8 md:pb-8">
         <!-- Dashboard View -->
         <div id="dashboardView" class="space-y-6">
-            <!-- Date Filter & Header -->
+            <!-- Header -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-bold text-slate-900">Dashboard</h2>
                     <p class="text-slate-500">Overview for Greenpeace Willowbrook</p>
-                </div>
-                <div class="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
-                    <button id="prevMonth" class="p-1 hover:bg-slate-100 rounded">←</button>
-                    <input type="text" id="monthSelector" readonly placeholder="Select Month" class="border-none focus:ring-0 text-sm font-medium text-slate-700 bg-transparent cursor-pointer">
-                    <button id="nextMonth" class="p-1 hover:bg-slate-100 rounded">→</button>
                 </div>
             </div>
 
@@ -245,40 +240,6 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Bottom Row: Maintenance Collected, Corpus Collected, Total Expenses -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
-                        <div>
-                            <p class="text-sm font-medium text-slate-500 mb-1">Maintenance Collected</p>
-                            <h3 class="text-2xl font-bold text-slate-900" id="maintenanceCollected">₹0</h3>
-                            <p class="text-xs text-slate-400 mt-1">From residents this month</p>
-                        </div>
-                        <div class="p-3 rounded-xl bg-emerald-50">
-                            <i data-lucide="trending-up" class="w-6 h-6 text-emerald-600"></i>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
-                        <div>
-                            <p class="text-sm font-medium text-slate-500 mb-1">Corpus Collected</p>
-                            <h3 class="text-2xl font-bold text-slate-900" id="corpusCollected">₹0</h3>
-                            <p class="text-xs text-slate-400 mt-1">From residents this month</p>
-                        </div>
-                        <div class="p-3 rounded-xl bg-amber-50">
-                            <i data-lucide="piggy-bank" class="w-6 h-6 text-amber-600"></i>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
-                        <div>
-                            <p class="text-sm font-medium text-slate-500 mb-1">Total Expenses</p>
-                            <h3 class="text-2xl font-bold text-slate-900" id="totalExpenses">₹0</h3>
-                            <p class="text-xs text-slate-400 mt-1">Utilities & Services this Month</p>
-                        </div>
-                        <div class="p-3 rounded-xl bg-rose-50">
-                            <i data-lucide="trending-down" class="w-6 h-6 text-rose-600"></i>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Charts Section -->
@@ -288,14 +249,6 @@
                     <h3 class="text-lg font-semibold text-slate-800 mb-4">Monthly Trends</h3>
                     <div class="h-64">
                         <canvas id="monthlyTrendsChart"></canvas>
-                    </div>
-                </div>
-                
-                <!-- Expense Categories Chart -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Expense Categories</h3>
-                    <div class="h-64">
-                        <canvas id="expenseCategoriesChart"></canvas>
                     </div>
                 </div>
                 
