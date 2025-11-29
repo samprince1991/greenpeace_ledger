@@ -59,6 +59,12 @@
 
             <!-- Right Side: Profile & Mobile Toggle -->
             <div class="flex items-center gap-4">
+                <!-- Authentication Button (Desktop) -->
+                <button id="authBtn" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700">
+                    <i data-lucide="log-in" class="w-[18px] h-[18px]"></i>
+                    <span>Sign In</span>
+                </button>
+                
                 <!-- User Profile (Desktop) -->
                 <div class="hidden md:flex items-center gap-3 pl-4 border-l border-slate-700">
                     <div class="text-right hidden lg:block">
@@ -362,7 +368,10 @@
             </div>
             <h3 class="text-xl font-bold text-slate-900">Reports Module</h3>
             <p class="text-slate-500 max-w-md">Detailed PDF and CSV reports for auditors will be generated here.</p>
-            <button id="downloadSampleBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Download Month Sample</button>
+            <div class="flex gap-4">
+                <button id="downloadSampleBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Download Month Sample</button>
+                <button id="migrateDataBtn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Migrate from localStorage</button>
+            </div>
         </div>
     </main>
 
@@ -549,6 +558,9 @@
     <script src="config/app-config.js"></script>
     <script src="config/flats-config.js"></script>
     <script src="config/ui-config.js"></script>
+    <script src="config/google-sheets-config.js"></script>
+    <!-- Google Sheets API Service -->
+    <script src="google-sheets-api.js"></script>
     <!-- Main Application Script -->
     <script src="script.js"></script>
     <script>

@@ -19,52 +19,64 @@ let collectionType = APP_CONFIG.DEFAULTS.COLLECTION_TYPE; // 'maintenance' or 'c
 let expenseDeductionSource = APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE; // 'maintenance' or 'corpus'
 
 // ============================================
-// Data Storage Layer (localStorage)
+// Data Storage Layer (Google Sheets)
 // ============================================
 
-// Initialize storage with default data if empty
-function initializeStorage() {
-    if (!localStorage.getItem(CONFIG.STORAGE_KEYS.EXPENSES)) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify([]));
+// Authentication check
+async function ensureAuthenticated() {
+    if (!googleSheetsService.isAuthenticated()) {
+        try {
+            await googleSheetsService.authenticate();
+        } catch (error) {
+            console.error('Authentication error:', error);
+            showNotification('Please authenticate with Google to continue', 'error');
+            throw error;
+        }
     }
-    
-    if (!localStorage.getItem(CONFIG.STORAGE_KEYS.SETTINGS)) {
-        const defaultSettings = {
-            MaintenancePerFlat: APP_CONFIG.DEFAULT_MAINTENANCE_PER_FLAT.toString()
-        };
-        localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(defaultSettings));
-    }
-    
-    if (!localStorage.getItem(CONFIG.STORAGE_KEYS.COLLECTIONS)) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify([]));
+}
+
+// Initialize storage - check if authenticated and load settings
+async function initializeStorage() {
+    try {
+        await ensureAuthenticated();
+        // Load settings from Google Sheets
+        const settings = await googleSheetsService.getSettings();
+        if (settings.MaintenancePerFlat) {
+            maintenancePerFlat = parseFloat(settings.MaintenancePerFlat) || CONFIG.DEFAULT_MAINTENANCE_PER_FLAT;
+        }
+    } catch (error) {
+        console.error('Initialization error:', error);
+        // Don't show error on initial load, user will authenticate when needed
     }
 }
 
 // Get all expenses
-function getAllExpenses() {
+async function getAllExpenses() {
     try {
-        const data = localStorage.getItem(CONFIG.STORAGE_KEYS.EXPENSES);
-        return data ? JSON.parse(data) : [];
+        await ensureAuthenticated();
+        return await googleSheetsService.getAllExpenses();
     } catch (error) {
         console.error('Error reading expenses:', error);
+        showNotification('Error loading expenses. Please try again.', 'error');
         return [];
     }
 }
 
 // Get all collections
-function getAllCollections() {
+async function getAllCollections() {
     try {
-        const data = localStorage.getItem(CONFIG.STORAGE_KEYS.COLLECTIONS);
-        return data ? JSON.parse(data) : [];
+        await ensureAuthenticated();
+        return await googleSheetsService.getAllCollections();
     } catch (error) {
         console.error('Error reading collections:', error);
+        showNotification('Error loading collections. Please try again.', 'error');
         return [];
     }
 }
 
 // Get expenses by month (supports both YYYY-MM and MonthName-YYYY)
-function getExpensesByMonth(month) {
-    const allExpenses = getAllExpenses();
+async function getExpensesByMonth(month) {
+    const allExpenses = await getAllExpenses();
     return allExpenses.filter(expense => {
         const expenseMonth = expense.month || '';
         // Check if month matches either format
@@ -73,8 +85,8 @@ function getExpensesByMonth(month) {
 }
 
 // Get collections by month (supports both YYYY-MM and MonthName-YYYY)
-function getCollectionsByMonth(month) {
-    const allCollections = getAllCollections();
+async function getCollectionsByMonth(month) {
+    const allCollections = await getAllCollections();
     return allCollections.filter(collection => {
         const collectionMonth = collection.month || '';
         return collectionMonth === month || collectionMonth === convertMonthFormat(month);
@@ -82,17 +94,15 @@ function getCollectionsByMonth(month) {
 }
 
 // Add expense
-function addExpense(expenseData) {
+async function addExpense(expenseData) {
     try {
-        const expenses = getAllExpenses();
+        await ensureAuthenticated();
         const newExpense = {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             ...expenseData,
             createdAt: new Date().toISOString()
         };
-        expenses.push(newExpense);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
-        return { success: true, expense: newExpense };
+        return await googleSheetsService.addExpense(newExpense);
     } catch (error) {
         console.error('Error adding expense:', error);
         return { success: false, error: error.message };
@@ -100,17 +110,15 @@ function addExpense(expenseData) {
 }
 
 // Add collection
-function addCollection(collectionData) {
+async function addCollection(collectionData) {
     try {
-        const collections = getAllCollections();
+        await ensureAuthenticated();
         const newCollection = {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             ...collectionData,
             createdAt: new Date().toISOString()
         };
-        collections.push(newCollection);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify(collections));
-        return { success: true, collection: newCollection };
+        return await googleSheetsService.addCollection(newCollection);
     } catch (error) {
         console.error('Error adding collection:', error);
         return { success: false, error: error.message };
@@ -118,12 +126,10 @@ function addCollection(collectionData) {
 }
 
 // Delete expense
-function deleteExpense(id) {
+async function deleteExpense(id) {
     try {
-        const expenses = getAllExpenses();
-        const filtered = expenses.filter(exp => exp.id !== id);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.EXPENSES, JSON.stringify(filtered));
-        return { success: true };
+        await ensureAuthenticated();
+        return await googleSheetsService.deleteExpense(id);
     } catch (error) {
         console.error('Error deleting expense:', error);
         return { success: false, error: error.message };
@@ -131,21 +137,19 @@ function deleteExpense(id) {
 }
 
 // Delete collection
-function deleteCollection(id) {
+async function deleteCollection(id) {
     try {
-        const collections = getAllCollections();
-        const filtered = collections.filter(col => col.id !== id);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.COLLECTIONS, JSON.stringify(filtered));
-        return { success: true };
+        await ensureAuthenticated();
+        return await googleSheetsService.deleteCollection(id);
     } catch (error) {
         console.error('Error deleting collection:', error);
         return { success: false, error: error.message };
     }
 }
 
-    // Get total collected for a specific month (maintenance only)
-function getTotalCollectedForMonth(month) {
-    const collections = getCollectionsByMonth(month);
+// Get total collected for a specific month (maintenance only)
+async function getTotalCollectedForMonth(month) {
+    const collections = await getCollectionsByMonth(month);
     return collections
         .filter(col => col.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
                       col.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
@@ -153,8 +157,8 @@ function getTotalCollectedForMonth(month) {
 }
 
 // Get total corpus for all time
-function getTotalCorpusAllTime() {
-    const allCollections = getAllCollections();
+async function getTotalCorpusAllTime() {
+    const allCollections = await getAllCollections();
     const corpusCollections = allCollections.filter(col => {
         const isCorpus = col.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
                         col.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
@@ -291,7 +295,6 @@ function switchTab(tabName) {
             }
         }
         displayCollectionsTable();
-        updateHousesSummary();
     } else if (tabName === UI_CONFIG.TABS.EXPENSES) {
         if (!expensesMonth) {
             expensesMonth = defaultMonth;
@@ -401,10 +404,10 @@ function closeMobileMenu() {
 // Display Functions
 // ============================================
 
-function updateDashboard() {
+async function updateDashboard() {
     const monthKey = currentMonth;
-    const expenses = getExpensesByMonth(monthKey);
-    const collections = getCollectionsByMonth(monthKey);
+    const expenses = await getExpensesByMonth(monthKey);
+    const collections = await getCollectionsByMonth(monthKey);
     
     // Calculate monthly stats (for this month)
     const maintenanceIncome = collections
@@ -447,8 +450,8 @@ function updateDashboard() {
     }, 0);
     
     // Calculate all-time stats for Current Balance
-    const allCollections = getAllCollections();
-    const allExpenses = getAllExpenses();
+    const allCollections = await getAllCollections();
+    const allExpenses = await getAllExpenses();
     
     const allTimeMaintenance = allCollections
         .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
@@ -475,7 +478,7 @@ function updateDashboard() {
     const balance = allTimeMaintenance - allTimeMaintenanceExpenses;
     
     // Calculate corpus fund: all-time corpus collections - all-time corpus expenses
-    const allTimeCorpus = getTotalCorpusAllTime();
+    const allTimeCorpus = await getTotalCorpusAllTime();
     const allTimeCorpusExpenses = allExpenses
         .filter(exp => {
             const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
@@ -501,13 +504,13 @@ function updateDashboard() {
     updateRecentActivity();
 }
 
-function updateHousesSummary() {
+async function updateHousesSummary() {
     const container = document.getElementById('housesSummary');
     if (!container) return;
     
     // Use collectionsMonth if on collections page, otherwise use currentMonth (for dashboard)
     const monthKey = activeTab === UI_CONFIG.TABS.COLLECTIONS && collectionsMonth ? collectionsMonth : currentMonth;
-    const collections = getCollectionsByMonth(monthKey);
+    const collections = await getCollectionsByMonth(monthKey);
     
     // Get flats from config
     const flats = FLATS_CONFIG.FLATS;
@@ -567,10 +570,10 @@ function updateHousesSummary() {
     }).join('');
 }
 
-function updateRecentActivity() {
+async function updateRecentActivity() {
     const container = document.getElementById('recentActivity');
-    const allExpenses = getAllExpenses();
-    const allCollections = getAllCollections();
+    const allExpenses = await getAllExpenses();
+    const allCollections = await getAllCollections();
     
     // Combine and sort by date
     const allTransactions = [
@@ -619,13 +622,13 @@ function updateRecentActivity() {
     }
 }
 
-function displayCollectionsTable() {
+async function displayCollectionsTable() {
     const tbody = document.getElementById('collectionsTableBody');
-    let collections = getAllCollections();
+    let collections = await getAllCollections();
     
     // Filter by month if a month is selected (empty string means show all)
     if (collectionsMonth && collectionsMonth !== '') {
-        collections = getCollectionsByMonth(collectionsMonth);
+        collections = await getCollectionsByMonth(collectionsMonth);
     }
     
     collections = collections.sort((a, b) => {
@@ -635,7 +638,7 @@ function displayCollectionsTable() {
     });
     
     // Update houses summary when collections table is displayed
-    updateHousesSummary();
+    await updateHousesSummary();
     
     if (collections.length === 0) {
         tbody.innerHTML = '<tr><td colSpan="6" class="px-6 py-8 text-center text-slate-400">No collections found.</td></tr>';
@@ -690,13 +693,13 @@ function displayCollectionsTable() {
     }
 }
 
-function displayExpensesTable() {
+async function displayExpensesTable() {
     const tbody = document.getElementById('expensesTableBody');
-    let expenses = getAllExpenses();
+    let expenses = await getAllExpenses();
     
     // Filter by month if a month is selected (empty string means show all)
     if (expensesMonth && expensesMonth !== '') {
-        expenses = getExpensesByMonth(expensesMonth);
+        expenses = await getExpensesByMonth(expensesMonth);
     }
     
     expenses = expenses.sort((a, b) => {
@@ -748,25 +751,25 @@ function displayExpensesTable() {
 // Delete Handlers (global for onclick)
 // ============================================
 
-function handleDeleteExpense(id) {
+async function handleDeleteExpense(id) {
     if (!confirm('Are you sure you want to delete this expense?')) return;
-    const result = deleteExpense(id);
+    const result = await deleteExpense(id);
     if (result.success) {
         showNotification('Expense deleted successfully!');
-        displayExpensesTable();
-        updateDashboard();
+        await displayExpensesTable();
+        await updateDashboard();
     } else {
         showNotification('Error deleting expense: ' + (result.error || 'Unknown error'), 'error');
     }
 }
 
-function handleDeleteCollection(id) {
+async function handleDeleteCollection(id) {
     if (!confirm('Are you sure you want to delete this collection?')) return;
-    const result = deleteCollection(id);
+    const result = await deleteCollection(id);
     if (result.success) {
         showNotification('Collection deleted successfully!');
-        displayCollectionsTable();
-        updateDashboard();
+        await displayCollectionsTable();
+        await updateDashboard();
     } else {
         showNotification('Error deleting collection: ' + (result.error || 'Unknown error'), 'error');
     }
@@ -776,7 +779,7 @@ function handleDeleteCollection(id) {
 // Form Handlers
 // ============================================
 
-function handleAddExpense(e) {
+async function handleAddExpense(e) {
     e.preventDefault();
     
     // Get date from Flatpickr or input
@@ -825,19 +828,19 @@ function handleAddExpense(e) {
         subType: expenseDeductionSource // For compatibility
     };
     
-    const result = addExpense(expenseData);
+    const result = await addExpense(expenseData);
     
     if (result.success) {
         showNotification('Expense added successfully!');
         closeExpenseModal();
-        displayExpensesTable();
-        updateDashboard();
+        await displayExpensesTable();
+        await updateDashboard();
     } else {
         showNotification('Error adding expense: ' + (result.error || 'Unknown error'), 'error');
     }
 }
 
-function handleAddCollection(e) {
+async function handleAddCollection(e) {
     e.preventDefault();
     
     // Get date from Flatpickr or input
@@ -889,16 +892,14 @@ function handleAddCollection(e) {
         collectedBy: APP_CONFIG.DEFAULTS.COLLECTED_BY
     };
     
-    const result = addCollection(collectionData);
+    const result = await addCollection(collectionData);
     
     if (result.success) {
         showNotification('Collection added successfully!');
         closeCollectionModal();
         // Force refresh dashboard and collections to show updated stats
-        setTimeout(() => {
-            displayCollectionsTable();
-            updateDashboard();
-        }, 100);
+        await displayCollectionsTable();
+        await updateDashboard();
     } else {
         showNotification('Error adding collection: ' + (result.error || 'Unknown error'), 'error');
     }
@@ -974,7 +975,6 @@ function changeCollectionsMonth(direction) {
         
         collectionsMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         displayCollectionsTable();
-        updateHousesSummary();
     }
 }
 
@@ -1041,13 +1041,13 @@ function initializeFlatpickr() {
             })],
             dateFormat: APP_CONFIG.DATE_FORMATS.MONTH_SELECTOR.replace('YYYY', 'Y').replace('MM', 'm'),
             defaultDate: now,
-            onChange: function(selectedDates, dateStr, instance) {
+            onChange: async function(selectedDates, dateStr, instance) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
                     const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     currentMonth = month;
                     currentMonthFormatted = convertMonthFormat(month);
-                    updateDashboard();
+                    await updateDashboard();
                 }
             }
         });
@@ -1092,13 +1092,12 @@ function initializeFlatpickr() {
             })],
             dateFormat: "Y-m",
             defaultDate: now,
-            onChange: function(selectedDates, dateStr, instance) {
+            onChange: async function(selectedDates, dateStr, instance) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
                     const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     collectionsMonth = month;
-                    displayCollectionsTable();
-                    updateHousesSummary();
+                    await displayCollectionsTable();
                 }
             }
         });
@@ -1117,12 +1116,12 @@ function initializeFlatpickr() {
             })],
             dateFormat: "Y-m",
             defaultDate: now,
-            onChange: function(selectedDates, dateStr, instance) {
+            onChange: async function(selectedDates, dateStr, instance) {
                 if (selectedDates.length > 0) {
                     const date = selectedDates[0];
                     const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     expensesMonth = month;
-                    displayExpensesTable();
+                    await displayExpensesTable();
                 }
             }
         });
@@ -1134,8 +1133,17 @@ function initializeFlatpickr() {
 // Initialization
 // ============================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    initializeStorage();
+document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize Google Sheets API
+    try {
+        await googleSheetsService.initialize();
+        console.log('Google Sheets API initialized');
+    } catch (error) {
+        console.error('Failed to initialize Google Sheets API:', error);
+    }
+    
+    // Initialize storage (will authenticate if needed)
+    await initializeStorage();
     
     // Set current month
     const now = new Date();
@@ -1154,10 +1162,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ensure correct tab is shown on load
     switchTab(UI_CONFIG.TABS.DASHBOARD);
     
-    // Initialize dashboard
-    updateDashboard();
-    displayCollectionsTable();
-    displayExpensesTable();
+    // Initialize dashboard (only if authenticated)
+    if (googleSheetsService.isAuthenticated()) {
+        await updateDashboard();
+        await displayCollectionsTable();
+        await displayExpensesTable();
+    }
     
     // Initialize icons
     if (typeof lucide !== 'undefined') {
@@ -1172,6 +1182,41 @@ function setupEventListeners() {
             const tab = this.getAttribute('data-tab');
             if (tab) switchTab(tab);
         });
+    });
+    
+    // Authentication button
+    document.getElementById('authBtn')?.addEventListener('click', async function() {
+        try {
+            await googleSheetsService.authenticate();
+            showNotification('Successfully authenticated with Google!', 'success');
+            // Reload data after authentication
+            await updateDashboard();
+            await displayCollectionsTable();
+            await displayExpensesTable();
+            updateAuthButton();
+        } catch (error) {
+            showNotification('Authentication failed: ' + error.message, 'error');
+        }
+    });
+    
+    // Migration button
+    document.getElementById('migrateDataBtn')?.addEventListener('click', async function() {
+        if (!confirm('This will migrate all data from localStorage to Google Sheets. Continue?')) {
+            return;
+        }
+        
+        try {
+            await ensureAuthenticated();
+            const result = await googleSheetsService.migrateFromLocalStorage();
+            if (result.success) {
+                // Reload data after migration
+                await updateDashboard();
+                await displayCollectionsTable();
+                await displayExpensesTable();
+            }
+        } catch (error) {
+            showNotification('Migration failed: ' + error.message, 'error');
+        }
     });
     
     // Modal buttons
@@ -1231,4 +1276,24 @@ function setupEventListeners() {
     document.getElementById('downloadSampleBtn')?.addEventListener('click', function() {
         showNotification('Report generation feature coming soon!');
     });
+    
+    // Update auth button on load
+    updateAuthButton();
+}
+
+// Update authentication button state
+function updateAuthButton() {
+    const authBtn = document.getElementById('authBtn');
+    if (authBtn) {
+        if (googleSheetsService.isAuthenticated()) {
+            authBtn.innerHTML = '<i data-lucide="check-circle" class="w-[18px] h-[18px]"></i><span>Signed In</span>';
+            authBtn.className = 'hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700';
+        } else {
+            authBtn.innerHTML = '<i data-lucide="log-in" class="w-[18px] h-[18px]"></i><span>Sign In</span>';
+            authBtn.className = 'hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700';
+        }
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
 }
