@@ -1446,7 +1446,14 @@ async function displayExpensesTable() {
         return;
     }
     
-    tbody.innerHTML = expenses.map(e => {
+    // Calculate total amount
+    const totalAmount = expenses.reduce((sum, e) => {
+        const amount = parseFloat(e.amount || 0);
+        return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+    
+    // Generate table rows
+    const rowsHtml = expenses.map(e => {
         const isCorpus = e.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
                         e.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
                         e.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE;
@@ -1474,6 +1481,17 @@ async function displayExpensesTable() {
             </tr>
         `;
     }).join('');
+    
+    // Add total row at the bottom
+    const totalRow = `
+        <tr class="bg-slate-50 border-t-2 border-slate-200">
+            <td class="px-6 py-4 font-semibold text-slate-900" colspan="5">Total</td>
+            <td class="px-6 py-4 text-right font-bold text-lg text-slate-900">${formatCurrency(totalAmount)}</td>
+            <td class="px-6 py-4"></td>
+        </tr>
+    `;
+    
+    tbody.innerHTML = rowsHtml + totalRow;
     
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
