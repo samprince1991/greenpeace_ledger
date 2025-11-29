@@ -1224,6 +1224,9 @@ function getLastNMonths(n = 6) {
 }
 
 // Update all charts
+// Flag to prevent multiple simultaneous chart updates
+let isUpdatingCharts = false;
+
 async function updateCharts() {
     if (typeof Chart === 'undefined') {
         console.warn('Chart.js not loaded');
@@ -1236,35 +1239,90 @@ async function updateCharts() {
         return;
     }
     
-    await updateMonthlyTrendsChart();
-    await updateIncomeExpensesChart();
+    // Prevent multiple simultaneous updates
+    if (isUpdatingCharts) {
+        return;
+    }
+    
+    isUpdatingCharts = true;
+    try {
+        await updateMonthlyTrendsChart();
+        await updateIncomeExpensesChart();
+    } finally {
+        isUpdatingCharts = false;
+    }
 }
 
 // Update Monthly Trends Chart
 async function updateMonthlyTrendsChart() {
     const canvas = document.getElementById('monthlyTrendsChart');
+    const loader = document.getElementById('monthlyTrendsChartLoader');
     if (!canvas) return;
     
+    // Show loader if chart doesn't exist yet
+    const isInitialLoad = !monthlyTrendsChart;
+    if (isInitialLoad && loader) {
+        loader.classList.remove('hidden');
+    }
+    
     const months = getLastNMonths(6);
+    
+    // Fetch all data once instead of making multiple API calls
+    const allCollections = await getAllCollections();
+    const allExpenses = await getAllExpenses();
+    
     const maintenanceData = [];
     const corpusData = [];
     const expenseData = [];
     
+    // Helper function to get month key from date string or use month field
+    function getMonthKey(item) {
+        // Use month field if available (YYYY-MM format)
+        if (item.month) {
+            return item.month;
+        }
+        // Otherwise parse date field (DD-MM-YYYY format)
+        if (item.date) {
+            const parts = item.date.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}`; // YYYY-MM from DD-MM-YYYY
+            }
+        }
+        // Fallback: try to parse as date string
+        try {
+            const date = new Date(item.date || item.collectionDate || item.expenseDate || '');
+            if (!isNaN(date.getTime())) {
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+        return '';
+    }
+    
     for (const month of months) {
-        const collections = await getCollectionsByMonth(month.key);
-        const expenses = await getExpensesByMonth(month.key);
+        // Filter collections and expenses for this month from already fetched data
+        const monthCollections = allCollections.filter(c => {
+            const monthKey = getMonthKey(c);
+            return monthKey === month.key;
+        });
         
-        const maintenance = collections
+        const monthExpenses = allExpenses.filter(e => {
+            const monthKey = getMonthKey(e);
+            return monthKey === month.key;
+        });
+        
+        const maintenance = monthCollections
             .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
                         c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
             .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
         
-        const corpus = collections
+        const corpus = monthCollections
             .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
                         c.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE)
             .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
         
-        const expensesTotal = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+        const expensesTotal = monthExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
         
         maintenanceData.push(maintenance);
         corpusData.push(corpus);
@@ -1273,8 +1331,14 @@ async function updateMonthlyTrendsChart() {
     
     const ctx = canvas.getContext('2d');
     
+    // Use update instead of destroy/recreate if chart exists
     if (monthlyTrendsChart) {
-        monthlyTrendsChart.destroy();
+        monthlyTrendsChart.data.labels = months.map(m => m.name);
+        monthlyTrendsChart.data.datasets[0].data = maintenanceData;
+        monthlyTrendsChart.data.datasets[1].data = corpusData;
+        monthlyTrendsChart.data.datasets[2].data = expenseData;
+        monthlyTrendsChart.update('none'); // 'none' mode = no animation on updates
+        return;
     }
     
     monthlyTrendsChart = new Chart(ctx, {
@@ -1311,6 +1375,10 @@ async function updateMonthlyTrendsChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: {
+                duration: 1000, // Smooth animation on initial load
+                easing: 'easeOutQuart'
+            },
             plugins: {
                 legend: {
                     position: 'top',
@@ -1335,6 +1403,11 @@ async function updateMonthlyTrendsChart() {
             }
         }
     });
+    
+    // Hide loader after chart is created
+    if (loader) {
+        loader.classList.add('hidden');
+    }
 }
 
 
@@ -1410,24 +1483,69 @@ async function updateExpenseCategoriesChart() {
 // Update Income vs Expenses Chart (Maintenance only)
 async function updateIncomeExpensesChart() {
     const canvas = document.getElementById('incomeExpensesChart');
+    const loader = document.getElementById('incomeExpensesChartLoader');
     if (!canvas) return;
     
+    // Show loader if chart doesn't exist yet
+    const isInitialLoad = !incomeExpensesChart;
+    if (isInitialLoad && loader) {
+        loader.classList.remove('hidden');
+    }
+    
     const months = getLastNMonths(6);
+    
+    // Fetch all data once instead of making multiple API calls
+    const allCollections = await getAllCollections();
+    const allExpenses = await getAllExpenses();
+    
     const incomeData = [];
     const expenseData = [];
     
+    // Helper function to get month key from date string or use month field
+    function getMonthKey(item) {
+        // Use month field if available (YYYY-MM format)
+        if (item.month) {
+            return item.month;
+        }
+        // Otherwise parse date field (DD-MM-YYYY format)
+        if (item.date) {
+            const parts = item.date.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}`; // YYYY-MM from DD-MM-YYYY
+            }
+        }
+        // Fallback: try to parse as date string
+        try {
+            const date = new Date(item.date || item.collectionDate || item.expenseDate || '');
+            if (!isNaN(date.getTime())) {
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+        return '';
+    }
+    
     for (const month of months) {
-        const collections = await getCollectionsByMonth(month.key);
-        const expenses = await getExpensesByMonth(month.key);
+        // Filter collections and expenses for this month from already fetched data
+        const monthCollections = allCollections.filter(c => {
+            const monthKey = getMonthKey(c);
+            return monthKey === month.key;
+        });
+        
+        const monthExpenses = allExpenses.filter(e => {
+            const monthKey = getMonthKey(e);
+            return monthKey === month.key;
+        });
         
         // Only count maintenance collections
-        const maintenanceIncome = collections
+        const maintenanceIncome = monthCollections
             .filter(c => c.type === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.TYPE || 
                         c.subType === APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.VALUE)
             .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
         
         // Only count maintenance expenses (not corpus expenses)
-        const maintenanceExpenses = expenses
+        const maintenanceExpenses = monthExpenses
             .filter(exp => {
                 const isCorpus = exp.deductionSource === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE || 
                                 exp.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE ||
@@ -1442,8 +1560,13 @@ async function updateIncomeExpensesChart() {
     
     const ctx = canvas.getContext('2d');
     
+    // Use update instead of destroy/recreate if chart exists
     if (incomeExpensesChart) {
-        incomeExpensesChart.destroy();
+        incomeExpensesChart.data.labels = months.map(m => m.name);
+        incomeExpensesChart.data.datasets[0].data = incomeData;
+        incomeExpensesChart.data.datasets[1].data = expenseData;
+        incomeExpensesChart.update('none'); // 'none' mode = no animation on updates
+        return;
     }
     
     incomeExpensesChart = new Chart(ctx, {
@@ -1470,6 +1593,10 @@ async function updateIncomeExpensesChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: {
+                duration: 1000, // Smooth animation on initial load
+                easing: 'easeOutQuart'
+            },
             plugins: {
                 legend: {
                     position: 'top',
@@ -1494,6 +1621,11 @@ async function updateIncomeExpensesChart() {
             }
         }
     });
+    
+    // Hide loader after chart is created
+    if (loader) {
+        loader.classList.add('hidden');
+    }
 }
 
 async function updateRecentActivity() {
