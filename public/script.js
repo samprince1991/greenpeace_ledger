@@ -337,6 +337,15 @@ function switchCollectionsSubTab(subTabName) {
             allTimeBtn.className = 'collections-subtab flex-1 px-6 py-4 text-sm font-semibold text-slate-700 bg-white border-b-2 border-indigo-600 transition-all relative -mb-px';
         }
         // Month filter is hidden automatically when monthly tab content is hidden
+    } else if (subTabName === 'paymentsByDate') {
+        const paymentsByDateContent = document.getElementById('collectionsTabPaymentsByDateContent');
+        const paymentsByDateBtn = document.getElementById('collectionsTabPaymentsByDate');
+        if (paymentsByDateContent) paymentsByDateContent.classList.remove('hidden');
+        if (paymentsByDateBtn) {
+            paymentsByDateBtn.className = 'collections-subtab flex-1 px-6 py-4 text-sm font-semibold text-slate-700 bg-white border-b-2 border-indigo-600 transition-all relative -mb-px';
+        }
+        // Load and display payments by date
+        displayPaymentsByDate();
     }
 }
 
@@ -2263,8 +2272,109 @@ async function handleDeleteCollection(id) {
         await updateAllTimeHouseTotals();
         await updateYearlyHouseBreakdown();
         await updateDashboard();
+        // Refresh payments by date list if that tab is active
+        const paymentsByDateContent = document.getElementById('collectionsTabPaymentsByDateContent');
+        if (paymentsByDateContent && !paymentsByDateContent.classList.contains('hidden')) {
+            await displayPaymentsByDate();
+        }
     } else {
         showNotification('Error deleting collection: ' + (result.error || 'Unknown error'), 'error');
+    }
+}
+
+// Display all payments sorted by date
+async function displayPaymentsByDate() {
+    const tbody = document.getElementById('paymentsByDateTableBody');
+    if (!tbody) return;
+    
+    try {
+        // Get all collections
+        const allCollections = await getAllCollections();
+        
+        if (!allCollections || allCollections.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">No payments found.</td></tr>';
+            return;
+        }
+        
+        // Sort collections by date (newest first)
+        // Date format is DD-MM-YYYY, so we need to parse it for sorting
+        const sortedCollections = allCollections.sort((a, b) => {
+            const parseDate = (dateStr) => {
+                if (!dateStr) return 0;
+                // Handle DD-MM-YYYY format
+                const parts = dateStr.split('-');
+                if (parts.length === 3 && parts[0].length <= 2) {
+                    // DD-MM-YYYY format
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10);
+                    const year = parseInt(parts[2], 10);
+                    return new Date(year, month - 1, day).getTime();
+                }
+                // Try parsing as standard date
+                return new Date(dateStr).getTime();
+            };
+            
+            const dateA = parseDate(a.date);
+            const dateB = parseDate(b.date);
+            return dateB - dateA; // Descending order (newest first)
+        });
+        
+        // Generate table rows
+        tbody.innerHTML = sortedCollections.map(collection => {
+            const date = formatDate(collection.date);
+            const flatNumber = collection.flatNumber || collection.category || '-';
+            
+            // Determine if it's corpus or maintenance
+            const isCorpus = collection.type === APP_CONFIG.COLLECTION_TYPES.CORPUS.TYPE || 
+                            collection.subType === APP_CONFIG.COLLECTION_TYPES.CORPUS.VALUE;
+            const typeDisplay = isCorpus ? APP_CONFIG.COLLECTION_TYPES.CORPUS.DISPLAY : APP_CONFIG.COLLECTION_TYPES.MAINTENANCE.DISPLAY;
+            
+            const amount = formatCurrency(collection.amount || 0);
+            const paymentMode = collection.paymentMode || '-';
+            const collectedBy = collection.collectedBy || '-';
+            
+            // Color the amount: emerald for maintenance, amber for corpus
+            const amountColorClass = isCorpus ? 'text-amber-600' : 'text-emerald-600';
+            
+            // Badge styling for type column (matching expenses table style)
+            const typeBadgeClass = isCorpus ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+            
+            // Row background highlight for corpus (subtle yellow tint)
+            const rowBgClass = isCorpus ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-slate-50';
+            
+            // Check if user has delete permission
+            const hasDeletePermission = typeof hasPermission !== 'undefined' && hasPermission('delete_collection');
+            const deleteButton = hasDeletePermission ? `<button 
+                onclick="handleDeleteCollection('${collection.id}')" 
+                class="px-3 py-1 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors"
+                title="Delete payment">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>` : '<span class="text-slate-400 text-xs">-</span>';
+            
+            return `
+                <tr class="${rowBgClass} transition-colors">
+                    <td class="px-6 py-4 font-medium text-slate-900">${date}</td>
+                    <td class="px-6 py-4 text-slate-700">${flatNumber}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${typeBadgeClass}">
+                            ${typeDisplay}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right font-semibold ${amountColorClass}">${amount}</td>
+                    <td class="px-6 py-4 text-slate-600">${paymentMode}</td>
+                    <td class="px-6 py-4 text-slate-600">${collectedBy}</td>
+                    <td class="px-6 py-4 text-center">${deleteButton}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        // Initialize icons for delete buttons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    } catch (error) {
+        console.error('Error displaying payments by date:', error);
+        tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-red-400">Error loading payments.</td></tr>';
     }
 }
 
@@ -2763,6 +2873,7 @@ function setupEventListeners() {
     document.getElementById('collectionsTabMonthly')?.addEventListener('click', () => switchCollectionsSubTab('monthly'));
     document.getElementById('collectionsTabYearly')?.addEventListener('click', () => switchCollectionsSubTab('yearly'));
     document.getElementById('collectionsTabAllTime')?.addEventListener('click', () => switchCollectionsSubTab('allTime'));
+    document.getElementById('collectionsTabPaymentsByDate')?.addEventListener('click', () => switchCollectionsSubTab('paymentsByDate'));
     
     // Year navigation for yearly breakdown
     document.getElementById('prevYearCollections')?.addEventListener('click', () => {
