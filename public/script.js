@@ -2272,11 +2272,8 @@ async function handleDeleteCollection(id) {
         await updateAllTimeHouseTotals();
         await updateYearlyHouseBreakdown();
         await updateDashboard();
-        // Refresh payments by date list if that tab is active
-        const paymentsByDateContent = document.getElementById('collectionsTabPaymentsByDateContent');
-        if (paymentsByDateContent && !paymentsByDateContent.classList.contains('hidden')) {
-            await displayPaymentsByDate();
-        }
+        // Always refresh payments by date list to keep it in sync
+        await displayPaymentsByDate();
     } else {
         showNotification('Error deleting collection: ' + (result.error || 'Unknown error'), 'error');
     }
